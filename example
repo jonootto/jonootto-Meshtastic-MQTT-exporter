@@ -1,0 +1,146 @@
+latitude_i: -413614735
+longitude_i: 1749350623
+altitude: 466
+time: 1719886399
+precision_bits: 32
+
+latitude_i: -413614735
+longitude_i: 1749350623
+altitude: 466
+time: 1719886399
+precision_bits: 32
+
+time: 1719886518
+environment_metrics {
+  temperature: 7.83
+  relative_humidity: 95.8222656
+  barometric_pressure: 937.045654
+  voltage: 12.256
+  current: 73.3
+  iaq: 8224
+}
+
+time: 1719886518
+environment_metrics {
+  temperature: 7.83
+  relative_humidity: 95.8222656
+  barometric_pressure: 937.045654
+  voltage: 12.256
+  current: 73.3
+  iaq: 8224
+}
+
+time: 1719886529
+device_metrics {
+  battery_level: 101
+  voltage: 4.141
+  channel_utilization: 16.58
+  air_util_tx: 5.852
+}
+
+latitude_i: -402542880
+longitude_i: 1758586750
+altitude: 912
+time: 1719886523
+precision_bits: 32
+
+latitude_i: -402542880
+longitude_i: 1758586750
+altitude: 912
+time: 1719886523
+precision_bits: 32
+
+time: 1719886529
+device_metrics {
+  battery_level: 101
+  voltage: 4.141
+  channel_utilization: 16.58
+  air_util_tx: 5.852
+}
+
+latitude_i: -402542880
+longitude_i: 1758586750
+altitude: 912
+time: 1719886523
+precision_bits: 32
+
+time: 1719886584
+device_metrics {
+  battery_level: 101
+  voltage: 4.344
+  channel_utilization: 21.1333332
+  air_util_tx: 6.4245
+  uptime_seconds: 7371
+}
+
+time: 1719886584
+device_metrics {
+  battery_level: 101
+  voltage: 4.344
+  channel_utilization: 21.1333332
+  air_util_tx: 6.4245
+  uptime_seconds: 7371
+}
+
+time: 1719886584
+device_metrics {
+  battery_level: 101
+  voltage: 4.344
+  channel_utilization: 21.1333332
+  air_util_tx: 6.4245
+  uptime_seconds: 7371
+}
+
+id: "!1fa0635c"
+long_name: "SV1"
+short_name: "SV1"
+macaddr: "\010\266\037\240c\"
+hw_model: TBEAM
+
+id: "!1fa0635c"
+long_name: "SV1"
+short_name: "SV1"
+macaddr: "\010\266\037\240c\"
+hw_model: TBEAM
+
+id: "!1fa0635c"
+long_name: "SV1"
+short_name: "SV1"
+macaddr: "\010\266\037\240c\"
+hw_model: TBEAM
+
+id: "!433f1e30"
+long_name: "Andy | ZL2OS 📦"
+short_name: "2OS9"
+macaddr: "H\312C?\0360"
+hw_model: HELTEC_V3
+
+id: "!433f1e30"
+long_name: "Andy | ZL2OS 📦"
+short_name: "2OS9"
+macaddr: "H\312C?\0360"
+hw_model: HELTEC_V3
+
+id: "!433f1e30"
+long_name: "Andy | ZL2OS 📦"
+short_name: "2OS9"
+macaddr: "H\312C?\0360"
+hw_model: HELTEC_V3
+
+id: "!da659e0c"
+long_name: "Andy | ZL2KTJ 👾"
+short_name: "2KTJ"
+macaddr: "4\267\332e\236\014"
+hw_model: HELTEC_V3
+
+id: "!da659e0c"
+long_name: "Andy | ZL2KTJ 👾"
+short_name: "2KTJ"
+macaddr: "4\267\332e\236\014"
+hw_model: HELTEC_V3
+
+id: "!da659e0c"
+long_name: "Andy | ZL2KTJ 👾"
+short_name: "2KTJ"
+macaddr: "4\267\332e\236\014"
+hw_model: HELTEC_V3
