@@ -144,3 +144,120 @@ long_name: "Andy | ZL2KTJ 👾"
 short_name: "2KTJ"
 macaddr: "4\267\332e\236\014"
 hw_model: HELTEC_V3
+
+
+
+from: 862247328
+to: 4294967295
+channel: 8
+encrypted: "\307EOG[N\340Z\3326\327\360\177\027\303\254{\350\332\010\365\360\031\274\221)\004 \177cOr"
+id: 1198158647
+rx_time: 1719889157
+rx_snr: -15.5
+rx_rssi: -142
+
+TELEMETRY_APP
+time: 1719889150
+device_metrics {
+  battery_level: 96
+  voltage: 4.135
+  channel_utilization: 10.1883335
+  air_util_tx: 3.69402766
+  uptime_seconds: 18952
+}
+
+
+from: 862247328
+to: 4294967295
+channel: 8
+encrypted: "\307EOG[N\340Z\3326\327\360\177\027\303\254{\350\332\010\365\360\031\274\221)\004 \177cOr"
+id: 1198158647
+rx_time: 1719889145
+rx_snr: -12.75
+rx_rssi: -126
+
+TELEMETRY_APP
+time: 1719889150
+device_metrics {
+  battery_level: 96
+  voltage: 4.135
+  channel_utilization: 10.1883335
+  air_util_tx: 3.69402766
+  uptime_seconds: 18952
+}
+
+
+from: 862247328
+to: 4294967295
+channel: 8
+encrypted: "\307EOG[N\340Z\3326\327\360\177\027\303\254{\350\332\010\365\360\031\274\221)\004 \177cOr"
+id: 1198158647
+rx_time: 1719889162
+rx_snr: 4.75
+rx_rssi: -99
+
+TELEMETRY_APP
+time: 1719889150
+device_metrics {
+  battery_level: 96
+  voltage: 4.135
+  channel_utilization: 10.1883335
+  air_util_tx: 3.69402766
+  uptime_seconds: 18952
+}
+
+
+from: 861770872
+to: 4294967295
+channel: 8
+encrypted: "0V\205\316\037M_\305\177\203\306\231\371\362|f[w\2615]\345W\335"
+id: 1699263314
+rx_time: 1719889165
+rx_snr: -14.75
+rx_rssi: -142
+hop_start: 4
+
+POSITION_APP
+latitude_i: -409099711
+longitude_i: 1750109371
+altitude: 25
+time: 1719889104
+precision_bits: 32
+
+
+from: 4145957592
+to: 4294967295
+channel: 8
+encrypted: "\260N}\003%\003=R$\377eY\232\247\255\244 \266Q\267\037"
+id: 550759154
+rx_time: 1719889166
+rx_snr: -15
+hop_limit: 6
+rx_rssi: -141
+hop_start: 7
+
+TELEMETRY_APP
+time: 1719889151
+device_metrics {
+  channel_utilization: 15.1366663
+  air_util_tx: 0.1555
+}
+
+
+from: 4145957592
+to: 4294967295
+channel: 8
+encrypted: "\260N}\003%\003=R$\377eY\232\247\255\244 \266Q\267\037"
+id: 550759154
+rx_time: 1719889155
+rx_snr: -8
+hop_limit: 6
+rx_rssi: -122
+hop_start: 7
+
+TELEMETRY_APP
+time: 1719889151
+device_metrics {
+  channel_utilization: 15.1366663
+  air_util_tx: 0.1555
+}
