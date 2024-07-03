@@ -2,3 +2,6 @@ meshtastic
 paho-mqtt
 cryptography
 colorama
+prometheus_client
+psycopg[binary]
+python-dotenv
