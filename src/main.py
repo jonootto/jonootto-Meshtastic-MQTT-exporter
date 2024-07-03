@@ -16,7 +16,7 @@ import os
 
 load_dotenv()
 FORMAT = '%(levelname)s: %(asctime)s - %(message)s'
-logging.basicConfig(level=logging.DEBUG,format=FORMAT,datefmt='%H:%M:%S')
+logging.basicConfig(level=logging.INFO,format=FORMAT,datefmt='%H:%M:%S')
 # Default settings
 
 db_name = os.environ["DBNAME"]
