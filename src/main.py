@@ -317,10 +317,9 @@ if __name__ == '__main__':
         x += 1
         y +=1
         if x == 10:
-            cleanupOld()
             #publishMetrics()
             x = 0
-        if y == 1000:
+        if y == 10000:
             cleanupOld()
             y = 0
         pass
