@@ -287,6 +287,13 @@ def loadDB():
     logging.info("loaded db")
     return node_info
 
+def cleanupOld():
+    logging.info("Cleaning DB")
+    with psycopg.connect(db_connection_string) as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM telemetry WHERE timestamp < now() - interval '30 days'")
+
+
 def publishMetrics():
     node_info = loadDB()
 
@@ -305,9 +312,15 @@ if __name__ == '__main__':
 
     client.subscribe(subscribe_topic, 0)
     x = 0
+    y = 0
     while client.loop() == 0:
         x += 1
+        y +=1
         if x == 10:
+            cleanupOld()
             #publishMetrics()
-            x=0
+            x = 0
+        if y == 1000:
+            cleanupOld()
+            y = 0
         pass
