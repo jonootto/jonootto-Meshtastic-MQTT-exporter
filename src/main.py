@@ -12,16 +12,18 @@ import datetime
 import psycopg
 from dotenv import load_dotenv
 import logging
+import os
 
 load_dotenv()
-logging.basicConfig(level=logging.INFO)
+FORMAT = '%(levelname)s: %(asctime)s - %(message)s'
+logging.basicConfig(level=logging.DEBUG,format=FORMAT,datefmt='%H:%M:%S')
 # Default settings
 
-db_name = "meshtastic"
-db_host = "10.1.100.252"
-db_user = "postgres"
-db_pass = "example"
-db_port = "5432"
+db_name = os.environ["DBNAME"]
+db_host = os.environ["DBHOST"]
+db_user = os.environ["DBUSER"]
+db_pass = os.environ["DBPASS"]
+db_port = os.environ["DBPORT"]
 db_connection_string = ("dbname=" + db_name + " host=" + db_host + " user=" + db_user + " password=" + db_pass + " port=" + db_port)
 
 MQTT_BROKER = "mqtt.meshtastic.org"
@@ -29,16 +31,16 @@ MQTT_PORT = 1883
 MQTT_USERNAME = "meshdev"
 MQTT_PASSWORD = "large4cats"
 root_topic = "msh/WLG_915/2/e/"
-channel = "LongFast"
+channel = os.environ["CHANNEL"]
+print(channel)
 key = "1PG7OiApB1nwvP+rz05pAQ=="
-
 
 padded_key = key.ljust(len(key) + ((4 - (len(key) % 4)) % 4), '=')
 replaced_key = padded_key.replace('-', '+').replace('_', '/')
 key = replaced_key
 
-
 message_ids = deque([],200)
+message_types=portnums_pb2.PortNum.items()
 
 def process_message(mp, text_payload, is_encrypted):
 
@@ -48,8 +50,6 @@ def process_message(mp, text_payload, is_encrypted):
         "id": getattr(mp, "id"),
         "to": getattr(mp, "to")
     }
-
-    #logging.info(text)
 
 def decode_encrypted(message_packet):
     try:
@@ -68,17 +68,18 @@ def decode_encrypted(message_packet):
         info = False
         pos = False
         env = False
+
         if message_packet.decoded.portnum == portnums_pb2.NODEINFO_APP:
             info = mesh_pb2.User()
             info.ParseFromString(message_packet.decoded.payload)
-            #logging.info("NODEINFO_APP")
+            logging.debug("NODEINFO_APP")
+            logging.debug(info)
 
-            #logging.info(info)
         elif message_packet.decoded.portnum == portnums_pb2.POSITION_APP:
             pos = mesh_pb2.Position()
             pos.ParseFromString(message_packet.decoded.payload)
-            #logging.info("POSITION_APP")
-            #logging.info(pos)
+            logging.debug("POSITION_APP")
+            logging.debug(pos)
 
         elif message_packet.decoded.portnum == portnums_pb2.TELEMETRY_APP:
             env = telemetry_pb2.Telemetry()
@@ -86,15 +87,26 @@ def decode_encrypted(message_packet):
             #logging.info(Fore.LIGHTGREEN_EX + "TELEMETRY_APP" + Style.RESET_ALL)     
             #logging.info(env)
 
-        #elif message_packet.decoded.portnum == portnums_pb2.TEXT_MESSAGE_APP:
+        elif message_packet.decoded.portnum == portnums_pb2.TEXT_MESSAGE_APP:
+            text_payload = message_packet.decoded.payload.decode("utf-8")
+            is_encrypted = True
+            process_message(message_packet, text_payload, is_encrypted)
+            logging.debug("TEXT_MESSAGE_APP")
+            logging.debug(f"{text_payload}")
+        #elif message_packet.decoded.portnum == portnums_pb2.NEIGHBORINFO_APP:
+            #nei = 
+        else:
+            loc = (next((i for i, v in enumerate(message_types) if v[1] == message_packet.decoded.portnum), None))
+            type = message_types[loc][0]
+            logging.warning(Fore.RED+"Unknown App " + str(message_packet.decoded.portnum) + " " + type + Style.RESET_ALL)
+            
             #text_payload = message_packet.decoded.payload.decode("utf-8")
             #is_encrypted = True
             #process_message(message_packet, text_payload, is_encrypted)
-            #logging.info("TEXT_MESSAGE_APP")
-            #logging.info(f"{text_payload}")
+            #logging.warning(text_payload)
 
     except Exception as e:
-        logging.info(f"Decryption failed: {str(e)}")
+        logging.warning(f"Decryption failed: {str(e)}")
     node_db(message_packet,info,pos,env)
 
 def on_connect(client, userdata, flags, rc, properties):
@@ -122,15 +134,15 @@ def on_message(client, userdata, msg):
         # logging.info(service_envelope)
         message_packet = service_envelope.packet
     except Exception as e:
-        logging.info(f"Error parsing message: {str(e)}")
+        logging.warning(f"Error parsing message: {str(e)}")
         return
     
     if message_packet.HasField("encrypted") and not message_packet.HasField("decoded"):
         if not message_seen(message_packet):
-            #logging.info(Fore.CYAN + str(message_packet) + Style.RESET_ALL)
+            #logging.debug(Fore.CYAN + str(message_packet) + Style.RESET_ALL)
             decode_encrypted(message_packet)
-       #else:
-            #logging.info(Fore.RED + "Skipping already seen message" + Style.RESET_ALL)
+        else:
+            logging.debug(Fore.LIGHTBLUE_EX + "Skipping already seen message" + Style.RESET_ALL)
 
 
 def node_db(message_packet,info,pos,env):
@@ -166,7 +178,7 @@ def node_db(message_packet,info,pos,env):
             lon = None
         alt = str(getattr(pos, "altitude",None))
         if int(alt) > 32000:
-            logging.info("Impossible ALT")
+            logging.warning("Impossible ALT")
             alt = None
         cursor.execute('UPDATE nodes SET latitude=%s, longitude=%s, altitude=%s WHERE id=%s', (lat, lon, alt, sender))   
 
@@ -194,11 +206,9 @@ def node_db(message_packet,info,pos,env):
             telem.update({metric:output})
         telem["id"] = sender
         if value:
-            logging.info(json.dumps(telem,indent=4))
+            logging.debug(json.dumps(telem,indent=4))
             cursor.execute('UPDATE nodes SET battery_level=%s, voltage=%s, channel_utilization=%s, air_util_tx=%s WHERE id = %s', (telem["battery_level"], telem["voltage"], telem["channel_utilization"], telem["air_util_tx"], telem["id"])) 
             cursor.execute('INSERT INTO telemetry (node, timestamp, battery_level, voltage, channel_utilization, air_util_tx) VALUES (%s,%s,%s,%s,%s,%s)',(telem["id"],timestamp,telem["battery_level"],telem["voltage"], telem["channel_utilization"], telem["air_util_tx"]))
-
-
     conn.commit()
     conn.close()
     return
@@ -208,13 +218,14 @@ def check_database():
     try:
         conn = psycopg.connect(db_connection_string)
     except psycopg.Error as e:
-        logging.info(e)
+        logging.warning(e)
         exit()
     finally:
         if conn:
             conn.close()
 
 def setup_tables():
+    #logging.warn("setup tables")
     statements = ["""CREATE TABLE IF NOT EXISTS nodes (
                 id BIGINT PRIMARY KEY, 
                 hexid VARCHAR(9),
@@ -248,7 +259,7 @@ def setup_tables():
                 cursor.execute(statement)
                 conn.commit()
     except psycopg.Error as e:
-        logging.info(e)
+        logging.error(e)
 
 def create_node_id(node_number):
     return f"!{hex(node_number)[2:]}"
@@ -277,7 +288,7 @@ def loadDB():
     return node_info
 
 def publishMetrics():
-    node_info = loadDB(db)
+    node_info = loadDB()
 
 if __name__ == '__main__':
     setup()
