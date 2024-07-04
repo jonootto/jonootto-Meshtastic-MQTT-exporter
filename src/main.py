@@ -16,9 +16,6 @@ import os
 import meshtastic
 import meshtastic.tcp_interface
 
-interface = meshtastic.tcp_interface.TCPInterface(hostname='192.168.1.115')
-interface.sendTelemetry()
-
 load_dotenv()
 FORMAT = '%(levelname)s: %(asctime)s - %(message)s'
 logging.basicConfig(level=logging.INFO,format=FORMAT,datefmt='%H:%M:%S')
