@@ -13,8 +13,6 @@ import psycopg
 from dotenv import load_dotenv
 import logging
 import os
-import meshtastic
-import meshtastic.tcp_interface
 
 load_dotenv()
 FORMAT = '%(levelname)s: %(asctime)s - %(message)s'
