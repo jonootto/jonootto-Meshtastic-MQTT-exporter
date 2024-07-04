@@ -13,6 +13,11 @@ import psycopg
 from dotenv import load_dotenv
 import logging
 import os
+import meshtastic
+import meshtastic.tcp_interface
+
+interface = meshtastic.tcp_interface.TCPInterface(hostname='192.168.1.115')
+interface.sendTelemetry()
 
 load_dotenv()
 FORMAT = '%(levelname)s: %(asctime)s - %(message)s'
@@ -178,7 +183,7 @@ def node_db(message_packet,info,pos,env):
             lon = None
         alt = str(getattr(pos, "altitude",None))
         if int(alt) > 32000:
-            logging.warning("Impossible ALT")
+            logging.warning("Impossible ALT: " + alt + " from : " + str(create_node_id(int(sender))))
             alt = None
         cursor.execute('UPDATE nodes SET latitude=%s, longitude=%s, altitude=%s WHERE id=%s', (lat, lon, alt, sender))   
 
