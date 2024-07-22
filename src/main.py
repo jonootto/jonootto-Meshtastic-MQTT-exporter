@@ -4,9 +4,8 @@ from meshtastic import mesh_pb2, mqtt_pb2, portnums_pb2, telemetry_pb2
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 import base64
-#import sqlite3
 from collections import deque
-from colorama import Fore, Back, Style
+from colorama import Fore, Style
 import json
 import datetime
 import psycopg
@@ -30,9 +29,7 @@ MQTT_BROKER = "mqtt.meshtastic.org"
 MQTT_PORT = 1883
 MQTT_USERNAME = "meshdev"
 MQTT_PASSWORD = "large4cats"
-root_topic = "msh/WLG_915/2/e/"
-channel = os.environ["CHANNEL"]
-print(channel)
+root_topic = "msh/WLG_915/2/e/#"
 key = "1PG7OiApB1nwvP+rz05pAQ=="
 
 padded_key = key.ljust(len(key) + ((4 - (len(key) % 4)) % 4), '=')
@@ -52,6 +49,7 @@ def process_message(mp, text_payload, is_encrypted):
     }
 
 def decode_encrypted(message_packet):
+    logging.debug("Messgae Recieved")
     try:
         key_bytes = base64.b64decode(key.encode('ascii'))
         nonce_packet_id = getattr(message_packet, "id").to_bytes(8, "little")
@@ -111,7 +109,7 @@ def decode_encrypted(message_packet):
 
 def on_connect(client, userdata, flags, rc, properties):
     if rc == 0:
-        logging.info(f"Connected to {MQTT_BROKER} on topic {channel}")
+        logging.info(f"Connected to {MQTT_BROKER} on topic {root_topic}")
     else:
         logging.info(f"Failed to connect to MQTT broker with result code {str(rc)}")
 
@@ -128,10 +126,11 @@ def message_seen(message_packet):
 
 
 def on_message(client, userdata, msg):
+    logging.debug(msg)
     service_envelope = mqtt_pb2.ServiceEnvelope()
     try:
         service_envelope.ParseFromString(msg.payload)
-        # logging.info(service_envelope)
+        logging.debug(service_envelope)
         message_packet = service_envelope.packet
     except Exception as e:
         logging.warning(f"Error parsing message: {str(e)}")
@@ -139,10 +138,13 @@ def on_message(client, userdata, msg):
     
     if message_packet.HasField("encrypted") and not message_packet.HasField("decoded"):
         if not message_seen(message_packet):
-            #logging.debug(Fore.CYAN + str(message_packet) + Style.RESET_ALL)
+            logging.debug(Fore.CYAN + str(message_packet) + Style.RESET_ALL)
             decode_encrypted(message_packet)
         else:
             logging.debug(Fore.LIGHTBLUE_EX + "Skipping already seen message" + Style.RESET_ALL)
+    else:
+        logging.debug(Fore.RED + str(message_packet) + Style.RESET_ALL)
+    
 
 
 def node_db(message_packet,info,pos,env):
@@ -301,16 +303,14 @@ if __name__ == '__main__':
     setup()
 
 
-    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="mqtest", userdata=None,protocol=mqtt.MQTTv5)
     client.on_connect = on_connect
     client.username_pw_set(username=MQTT_USERNAME, password=MQTT_PASSWORD)
     client.connect(MQTT_BROKER, MQTT_PORT, 60)
 
     client.on_message = on_message
 
-    subscribe_topic = f"{root_topic}{channel}/#"
-
-    client.subscribe(subscribe_topic, 0)
+    client.subscribe(root_topic, 0)
     x = 0
     y = 0
     while client.loop() == 0:

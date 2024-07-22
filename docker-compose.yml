@@ -21,3 +21,13 @@ services:
     restart: unless-stopped
     ports:
      - '3000:3000'
+    
+  meshtastic:
+    build: .
+    container_name: mesh
+    environment:
+      - DBNAME=meshtastic
+      - DBHOST=10.1.100.252
+      - DBUSER=postgres
+      - DBPASS=example
+      - DBPORT=5432
