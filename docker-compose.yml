@@ -31,3 +31,4 @@ services:
       - DBUSER=postgres
       - DBPASS=example
       - DBPORT=5432
+      - LOGGING=debug

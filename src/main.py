@@ -16,7 +16,7 @@ import random
 
 load_dotenv()
 FORMAT = '%(levelname)s: %(asctime)s - %(message)s'
-logging.basicConfig(level=logging.INFO,format=FORMAT,datefmt='%H:%M:%S')
+
 # Default settings
 
 db_name = os.environ["DBNAME"]
@@ -24,7 +24,15 @@ db_host = os.environ["DBHOST"]
 db_user = os.environ["DBUSER"]
 db_pass = os.environ["DBPASS"]
 db_port = os.environ["DBPORT"]
+loglevel = os.environ["LOGGING"]
 db_connection_string = ("dbname=" + db_name + " host=" + db_host + " user=" + db_user + " password=" + db_pass + " port=" + db_port)
+
+llevel = logging.INFO
+if loglevel == "debug":
+    llevel = logging.DEBUG
+
+logging.basicConfig(level=llevel,format=FORMAT,datefmt='%H:%M:%S')
+
 
 MQTT_BROKER = "mqtt.meshtastic.org"
 MQTT_PORT = 1883
@@ -50,7 +58,6 @@ def process_message(mp, text_payload, is_encrypted):
     }
 
 def decode_encrypted(message_packet):
-    logging.debug("Message Recieved")
     try:
         key_bytes = base64.b64decode(key.encode('ascii'))
         nonce_packet_id = getattr(message_packet, "id").to_bytes(8, "little")
@@ -60,7 +67,6 @@ def decode_encrypted(message_packet):
         cipher = Cipher(algorithms.AES(key_bytes), modes.CTR(nonce), backend=default_backend())
         decryptor = cipher.decryptor()
         decrypted_bytes = decryptor.update(getattr(message_packet, "encrypted")) + decryptor.finalize()
-
         data = mesh_pb2.Data()
         data.ParseFromString(decrypted_bytes)
         message_packet.decoded.CopyFrom(data)
@@ -90,8 +96,8 @@ def decode_encrypted(message_packet):
             text_payload = message_packet.decoded.payload.decode("utf-8")
             is_encrypted = True
             process_message(message_packet, text_payload, is_encrypted)
-            logging.debug("TEXT_MESSAGE_APP")
-            logging.debug(f"{text_payload}")
+            logging.info("TEXT_MESSAGE_APP")
+            logging.info(f"{text_payload}")
         #elif message_packet.decoded.portnum == portnums_pb2.NEIGHBORINFO_APP:
             #nei = 
         else:
@@ -127,11 +133,9 @@ def message_seen(message_packet):
 
 
 def on_message(client, userdata, msg):
-    logging.debug(msg)
     service_envelope = mqtt_pb2.ServiceEnvelope()
     try:
         service_envelope.ParseFromString(msg.payload)
-        logging.debug(service_envelope)
         message_packet = service_envelope.packet
     except Exception as e:
         logging.warning(f"Error parsing message: {str(e)}")
@@ -139,7 +143,10 @@ def on_message(client, userdata, msg):
     
     if message_packet.HasField("encrypted") and not message_packet.HasField("decoded"):
         if not message_seen(message_packet):
-            logging.debug(Fore.CYAN + str(message_packet) + Style.RESET_ALL)
+            rawmsg = str(message_packet).splitlines()
+            rawmsg.pop(3)
+            #parsedmsg = json.dumps(rawmsg,indent=4)
+            logging.debug(Fore.CYAN + str(rawmsg) + Style.RESET_ALL)
             decode_encrypted(message_packet)
         else:
             logging.debug(Fore.LIGHTBLUE_EX + "Skipping already seen message" + Style.RESET_ALL)
