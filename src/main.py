@@ -49,7 +49,7 @@ def process_message(mp, text_payload, is_encrypted):
     }
 
 def decode_encrypted(message_packet):
-    logging.debug("Messgae Recieved")
+    logging.debug("Message Recieved")
     try:
         key_bytes = base64.b64decode(key.encode('ascii'))
         nonce_packet_id = getattr(message_packet, "id").to_bytes(8, "little")
