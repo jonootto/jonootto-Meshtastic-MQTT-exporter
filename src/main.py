@@ -169,8 +169,9 @@ def node_db(message_packet,info,pos,env):
         
     #add info
     lastHeard = (getattr(message_packet, "rx_time"))
+    hopcount = (getattr(message_packet, "hop_start"))
     timestamp = datetime.datetime.fromtimestamp(lastHeard,datetime.UTC)
-    cursor.execute('UPDATE nodes SET LastHeard=%s WHERE id=%s', (timestamp, sender))
+    cursor.execute('UPDATE nodes SET hopcount=%s, LastHeard=%s WHERE id=%s', (hopcount, timestamp, sender))
 
     if info:
         long_name = str(getattr(info, "long_name"))
@@ -250,6 +251,7 @@ def setup_tables():
                 channel_utilization decimal,
                 air_util_tx decimal,
                 role VARCHAR(32),
+                hopcount smallint,
                 LastHeard TIMESTAMPTZ
                 );""",
                 """CREATE TABLE IF NOT EXISTS telemetry (
@@ -293,7 +295,7 @@ def loadDB():
             if data != "id":
                 nextnode.update({data:item[data]})
         node_info.update({str(item["id"]):nextnode})
-    logging.info(json.dumps(node_info["2990211348"],indent=4))
+    #logging.info(json.dumps(node_info["2990211348"],indent=4))
     logging.info("loaded db")
     return node_info
 
