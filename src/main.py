@@ -12,6 +12,7 @@ import psycopg
 from dotenv import load_dotenv
 import logging
 import os
+import random
 
 load_dotenv()
 FORMAT = '%(levelname)s: %(asctime)s - %(message)s'
@@ -302,8 +303,8 @@ def publishMetrics():
 if __name__ == '__main__':
     setup()
 
-
-    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="mqtest", userdata=None,protocol=mqtt.MQTTv5)
+    id = "StatsClient" + str(random.randint(1000,9999))
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=id, userdata=None,protocol=mqtt.MQTTv5)
     client.on_connect = on_connect
     client.username_pw_set(username=MQTT_USERNAME, password=MQTT_PASSWORD)
     client.connect(MQTT_BROKER, MQTT_PORT, 60)
