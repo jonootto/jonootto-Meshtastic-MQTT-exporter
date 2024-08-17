@@ -341,7 +341,7 @@ def checkOffline():
             except:
                 #NO MATCH
                 email = None
-                max_hours = 1
+                max_hours = 6
 
             if total_hours > max_hours:
                 with psycopg.connect(db_connection_string) as conn:
