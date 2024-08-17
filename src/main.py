@@ -374,7 +374,7 @@ if __name__ == '__main__':
     while client.loop() == 0:
         x += 1
         y +=1
-        if x == 10:
+        if x == 100:
             #publishMetrics()
             checkOffline()
             x = 0
