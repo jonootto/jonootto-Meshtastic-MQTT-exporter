@@ -25,6 +25,8 @@ services:
   meshtastic:
     build: .
     container_name: mesh
+    volumes:
+      - ./watch.txt:/app/watch.txt
     environment:
       - DBNAME=meshtastic
       - DBHOST=10.1.100.252

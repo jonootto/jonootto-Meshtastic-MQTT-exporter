@@ -5,3 +5,4 @@ colorama
 prometheus_client
 psycopg[binary]
 python-dotenv
+pyyaml
