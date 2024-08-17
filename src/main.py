@@ -330,7 +330,7 @@ def checkOffline():
     node_info = loadDB()
     now = datetime.datetime.now(datetime.UTC)
     for i in node_info:
-        if node_info[i]['online'] == True:
+        if node_info[i]['online'] != False:
             id = node_info[i]['hexid']
             timestamp = node_info[i]['lastheard']
             timegap = now - timestamp
