@@ -13,6 +13,10 @@ from dotenv import load_dotenv
 import logging
 import os
 import random
+import smtplib
+from email.mime.text import MIMEText
+import yaml
+
 
 load_dotenv()
 FORMAT = '%(levelname)s: %(asctime)s - %(message)s'
@@ -24,15 +28,15 @@ db_host = os.environ["DBHOST"]
 db_user = os.environ["DBUSER"]
 db_pass = os.environ["DBPASS"]
 db_port = os.environ["DBPORT"]
-loglevel = os.environ["LOGGING"]
 db_connection_string = ("dbname=" + db_name + " host=" + db_host + " user=" + db_user + " password=" + db_pass + " port=" + db_port)
 
 llevel = logging.INFO
-if loglevel == "debug":
-    llevel = logging.DEBUG
+#llevel = logging.DEBUG
 
 logging.basicConfig(level=llevel,format=FORMAT,datefmt='%H:%M:%S')
 
+timestamptz_format = "%Y-%m-%d %H:%M:%S%z"
+watch = {}
 
 MQTT_BROKER = "mqtt.meshtastic.org"
 MQTT_PORT = 1883
@@ -154,7 +158,6 @@ def on_message(client, userdata, msg):
         logging.debug(Fore.RED + str(message_packet) + Style.RESET_ALL)
     
 
-
 def node_db(message_packet,info,pos,env):
     sender = str(getattr(message_packet, "from"))
     conn = psycopg.connect(db_connection_string)
@@ -171,7 +174,7 @@ def node_db(message_packet,info,pos,env):
     lastHeard = (getattr(message_packet, "rx_time"))
     hopcount = (getattr(message_packet, "hop_start"))
     timestamp = datetime.datetime.fromtimestamp(lastHeard,datetime.UTC)
-    cursor.execute('UPDATE nodes SET hopcount=%s, LastHeard=%s WHERE id=%s', (hopcount, timestamp, sender))
+    cursor.execute('UPDATE nodes SET online=True, hopcount=%s, LastHeard=%s WHERE id=%s', (hopcount, timestamp, sender))
 
     if info:
         long_name = str(getattr(info, "long_name"))
@@ -252,7 +255,8 @@ def setup_tables():
                 air_util_tx decimal,
                 role VARCHAR(32),
                 hopcount smallint,
-                LastHeard TIMESTAMPTZ
+                LastHeard TIMESTAMPTZ,
+                online boolean
                 );""",
                 """CREATE TABLE IF NOT EXISTS telemetry (
                 id SERIAL PRIMARY KEY,
@@ -276,9 +280,22 @@ def setup_tables():
 def create_node_id(node_number):
     return f"!{hex(node_number)[2:]}"
 
+def load_watch():
+    with open('/app/watch.txt', 'r') as file:
+        for line in file:
+            # Split the line by comma and strip any surrounding whitespace/newline characters
+            id, email, hours = line.strip().split(',')
+            # Append the tuple to the data list
+            watch[id] = (email, int(hours))
+    #email, hours = watch['!1fa0635c']
+    #logging.warning(f"ID: {'!1fa0635c'}, Email: {email}, Time: {hours}")
+
+
 def setup():
     check_database()
     setup_tables()
+    load_watch()
+    checkOffline()
 
 def loadDB():
     statement = "SELECT * FROM nodes"# WHERE id = 2990211348"
@@ -296,7 +313,7 @@ def loadDB():
                 nextnode.update({data:item[data]})
         node_info.update({str(item["id"]):nextnode})
     #logging.info(json.dumps(node_info["2990211348"],indent=4))
-    logging.info("loaded db")
+    #logging.debug("loaded db")
     return node_info
 
 def cleanupOld():
@@ -304,10 +321,40 @@ def cleanupOld():
     with psycopg.connect(db_connection_string) as conn:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM telemetry WHERE timestamp < now() - interval '30 days'")
+        conn.commit()
 
 
-def publishMetrics():
+
+def checkOffline():
+    logging.info("Checking for offline nodes")
     node_info = loadDB()
+    now = datetime.datetime.now(datetime.UTC)
+    for i in node_info:
+        if node_info[i]['online'] == True:
+            id = node_info[i]['hexid']
+            timestamp = node_info[i]['lastheard']
+            timegap = now - timestamp
+            total_hours = round(timegap.total_seconds() / 3600,2)
+            try:
+                email = watch[id][0]
+                max_hours = watch[id][1]
+            except:
+                #NO MATCH
+                email = None
+                max_hours = 1
+
+            if total_hours > max_hours:
+                with psycopg.connect(db_connection_string) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('UPDATE nodes SET online=False WHERE hexid=%s',(id,))
+                    conn.commit()
+
+                #write to db
+                if email:
+                    logging.warning('ID: %s, Last Heard (Hours): %s, Max Age: %s', id, total_hours, max_hours)
+                    #send email
+            
+
 
 if __name__ == '__main__':
     setup()
@@ -320,6 +367,7 @@ if __name__ == '__main__':
 
     client.on_message = on_message
 
+
     client.subscribe(root_topic, 0)
     x = 0
     y = 0
@@ -328,8 +376,10 @@ if __name__ == '__main__':
         y +=1
         if x == 10:
             #publishMetrics()
+            checkOffline()
             x = 0
-        if y == 10000:
+        if y == 1000:
             cleanupOld()
+
             y = 0
         pass
