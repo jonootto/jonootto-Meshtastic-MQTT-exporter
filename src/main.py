@@ -236,8 +236,8 @@ def setup():
     setup_tables()
     load_watch()
     cleanup_old()
-    schedule.every(1).minutes.do(check_offline)
-    schedule.every(30).minutes.do(cleanup_old)
+    schedule.every(10).minutes.do(check_offline)
+    schedule.every(60).minutes.do(cleanup_old)
 
 
 def load_db():
