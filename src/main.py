@@ -48,6 +48,7 @@ MQTT_USERNAME = "meshdev"
 MQTT_PASSWORD = "large4cats"
 root_topic = "msh/WLG_915/2/e/#"
 key = "1PG7OiApB1nwvP+rz05pAQ=="
+mqtt_connected = False
 
 padded_key = key.ljust(len(key) + ((4 - (len(key) % 4)) % 4), '=')
 replaced_key = padded_key.replace('-', '+').replace('_', '/')
@@ -112,7 +113,7 @@ def decode_encrypted(message_packet):
             loc = (next((i for i, v in enumerate(message_types) if v[1] == message_packet.decoded.portnum), None))
             type = message_types[loc][0]
             logging.warning(Fore.RED+"Unknown App " + str(message_packet.decoded.portnum) + " " + type + Style.RESET_ALL)
-            
+        
             #text_payload = message_packet.decoded.payload.decode("utf-8")
             #is_encrypted = True
             #process_message(message_packet, text_payload, is_encrypted)
@@ -123,11 +124,13 @@ def decode_encrypted(message_packet):
     node_db(message_packet,info,pos,env)
 
 def on_connect(client, userdata, flags, rc, properties):
+    global mqtt_connected
     if rc == 0:
         logging.info(f"Connected to {MQTT_BROKER} on topic {root_topic}")
+        mqtt_connected = True
     else:
         logging.info(f"Failed to connect to MQTT broker with result code {str(rc)}")
-
+        mqtt_connected = False
 
 def message_seen(message_packet):
     id = getattr(message_packet, "id")
@@ -298,7 +301,6 @@ def setup():
     check_database()
     setup_tables()
     load_watch()
-    checkOffline()
 
 def loadDB():
     statement = "SELECT * FROM nodes"# WHERE id = 2990211348"
@@ -348,13 +350,11 @@ def checkOffline():
                 #NO MATCH
                 email = None
                 max_hours = 6
-
             if total_hours >= max_hours:
                 with psycopg.connect(db_connection_string) as conn:
                     cursor = conn.cursor()
                     cursor.execute('UPDATE nodes SET online=False WHERE hexid=%s',(id,))
                     conn.commit()
-
                 #write to db
                 if email:
                     logging.warning('Max time exceeded for ID: %s %s, Last Heard (Hours): %s, Max Age: %s - emailing %s from %s', id, shortname, total_hours, max_hours, email, email_sender)
@@ -363,6 +363,7 @@ def checkOffline():
                     body = 'Node %s - %s was last seen at %s, %s hours ago with %s%% battery' % (id,shortname, localtimestamp, total_hours, batterylevel)
                     #send email
                     send_email(subject,body,email)
+
 
 def send_email(subject, body, recipient):
     # Debugging: Check the types of the inputs
@@ -409,7 +410,10 @@ if __name__ == '__main__':
         y +=1
         if x == 100:
             #publishMetrics()
-            checkOffline()
+            if mqtt_connected:
+                checkOffline()
+            else:
+                logging.warning('MQTT not connected. Skipping offline checks.')
             x = 0
         if y == 1000:
             cleanupOld()
