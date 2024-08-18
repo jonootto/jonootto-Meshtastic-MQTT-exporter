@@ -336,6 +336,7 @@ def checkOffline():
         if node_info[i]['online'] != False:
             id = node_info[i]['hexid']
             timestamp = node_info[i]['lastheard']
+            timestamp = timestamp.replace(tzinfo=ZoneInfo('UTC'))
             timegap = now - timestamp
             total_hours = round(timegap.total_seconds() / 3600,2)
             try:
