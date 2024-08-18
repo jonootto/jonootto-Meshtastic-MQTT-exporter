@@ -256,19 +256,24 @@ def check_offline():
     logging.info("Checking for offline nodes")
     node_info = load_db()
     now = datetime.datetime.now(datetime.UTC)
-    for id, info in node_info.items():
-        if info['online']:
-            timestamp = info['lastheard']
+    for i in node_info:
+        thisnode = node_info[i]
+        id = thisnode['hexid']
+        if thisnode['online'] != False:
+            timestamp = thisnode['lastheard']
             timegap = now - timestamp
             total_hours = round(timegap.total_seconds() / 3600, 2)
+            shortname = thisnode['short_name']
             try:
-                email, max_hours = watch[id]
-                shortname = info['short_name']
-                batterylevel = info['battery_level']
+                email = watch[id][0]
+                max_hours = watch[id][1]
+                batterylevel = thisnode['battery_level']
                 logging.info('Watched node %s %s last seen %s hours ago. Limit %s', id, shortname, total_hours, max_hours)
-            except KeyError:
+            except Exception as e:
+                #logging.error("An error occurred: %s", e)
                 email = None
                 max_hours = 6
+                #logging.info('Node %s is not watched', shortname)
             if total_hours >= max_hours:
                 with psycopg.connect(db_connection_string) as conn:
                     with conn.cursor() as cursor:
@@ -320,7 +325,7 @@ if __name__ == '__main__':
     while client.loop() == 0:
         x += 1
         y += 1
-        if x == 100:
+        if x == 20:
             if mqtt_connected:
                 check_offline()
             else:
