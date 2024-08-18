@@ -343,7 +343,7 @@ def checkOffline():
                 max_hours = watch[id][1]
                 shortname = node_info[i]['short_name']
                 batterylevel = node_info[i]['battery_level']
-                logging.info('Watched node %s %s last seen %s hours ago',id, shortname,total_hours)
+                logging.info('Watched node %s %s last seen %s hours ago. Limit %s',id, shortname,total_hours, max_hours)
             except:
                 #NO MATCH
                 email = None
