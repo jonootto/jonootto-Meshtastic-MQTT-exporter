@@ -34,3 +34,5 @@ services:
       - DBPASS=example
       - DBPORT=5432
       - LOGGING=debug
+      - EPASSWORD=password
+      - ESENDER=wlg915alerts@gmail.com

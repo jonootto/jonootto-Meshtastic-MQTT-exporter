@@ -8,6 +8,7 @@ from collections import deque
 from colorama import Fore, Style
 import json
 import datetime
+from zoneinfo import ZoneInfo
 import psycopg
 from dotenv import load_dotenv
 import logging
@@ -16,7 +17,8 @@ import random
 import smtplib
 from email.mime.text import MIMEText
 import yaml
-
+import smtplib
+from email.mime.text import MIMEText
 
 load_dotenv()
 FORMAT = '%(levelname)s: %(asctime)s - %(message)s'
@@ -28,6 +30,8 @@ db_host = os.environ["DBHOST"]
 db_user = os.environ["DBUSER"]
 db_pass = os.environ["DBPASS"]
 db_port = os.environ["DBPORT"]
+email_password = os.environ["EPASSWORD"]
+email_sender = os.environ["ESENDER"]
 db_connection_string = ("dbname=" + db_name + " host=" + db_host + " user=" + db_user + " password=" + db_pass + " port=" + db_port)
 
 llevel = logging.INFO
@@ -286,10 +290,9 @@ def load_watch():
             # Split the line by comma and strip any surrounding whitespace/newline characters
             id, email, hours = line.strip().split(',')
             # Append the tuple to the data list
-            watch[id] = (email, int(hours))
+            watch[id] = (email, float(hours))
     #email, hours = watch['!1fa0635c']
     #logging.warning(f"ID: {'!1fa0635c'}, Email: {email}, Time: {hours}")
-
 
 def setup():
     check_database()
@@ -338,12 +341,14 @@ def checkOffline():
             try:
                 email = watch[id][0]
                 max_hours = watch[id][1]
+                shortname = node_info[i]['short_name']
+                logging.info('Watched node %s %s last seen %s hours ago',id, shortname,total_hours)
             except:
                 #NO MATCH
                 email = None
                 max_hours = 6
 
-            if total_hours > max_hours:
+            if total_hours >= max_hours:
                 with psycopg.connect(db_connection_string) as conn:
                     cursor = conn.cursor()
                     cursor.execute('UPDATE nodes SET online=False WHERE hexid=%s',(id,))
@@ -351,9 +356,37 @@ def checkOffline():
 
                 #write to db
                 if email:
-                    logging.warning('ID: %s, Last Heard (Hours): %s, Max Age: %s', id, total_hours, max_hours)
+                    logging.warning('Max time exceeded for ID: %s %s, Last Heard (Hours): %s, Max Age: %s - emailing %s from %s', id, shortname, total_hours, max_hours, email, email_sender)
+                    subject = 'Meshtastic node %s - %s offline' % (id, shortname)
+                    localtimestamp = timestamp.astimezone(ZoneInfo('localtime'))
+                    body = 'Node %s - %s was last seen at %s, %s hours ago' % (id,shortname, localtimestamp, total_hours)
                     #send email
-            
+                    send_email(subject,body,email)
+
+def send_email(subject, body, recipient):
+    # Debugging: Check the types of the inputs
+    logging.warning(f"email_sender: {email_sender}, type: {type(email_sender)}")
+    logging.warning(f"email_password: {email_password}, type: {type(email_password)}")
+    logging.warning(f"recipient: {recipient}, type: {type(recipient)}")
+
+    # Ensure recipient is a string and not a tuple
+    if isinstance(recipient, tuple):
+        recipient = recipient[0]
+
+    # Create MIMEText object
+    msg = MIMEText(body)
+    msg['Subject'] = str(subject)
+    msg['From'] = str(email_sender)
+    msg['To'] = str(recipient)
+    
+    try:
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp_server:
+            smtp_server.login(email_sender, email_password)
+            smtp_server.sendmail(email_sender, recipient, msg.as_string())
+        logging.info("Message sent!")
+    except Exception as e:
+        logging.error(f"An error occurred: {e}")
+
 
 
 if __name__ == '__main__':
@@ -374,7 +407,7 @@ if __name__ == '__main__':
     while client.loop() == 0:
         x += 1
         y +=1
-        if x == 100:
+        if x == 20:
             #publishMetrics()
             checkOffline()
             x = 0
