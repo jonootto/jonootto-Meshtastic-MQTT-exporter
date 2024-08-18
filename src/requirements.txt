@@ -1,5 +1,5 @@
 meshtastic 
-paho-mqtt
+paho-mqtt>2
 cryptography
 colorama
 prometheus_client
