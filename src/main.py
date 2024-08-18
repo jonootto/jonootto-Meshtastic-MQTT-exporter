@@ -15,6 +15,8 @@ import os
 import random
 import smtplib
 from email.mime.text import MIMEText
+import schedule
+import time
 
 load_dotenv()
 
@@ -234,6 +236,9 @@ def setup():
     check_database()
     setup_tables()
     load_watch()
+    cleanup_old()
+    schedule.every(1).minutes.do(check_offline)
+    schedule.every(30).minutes.do(cleanup_old)
 
 
 def load_db():
@@ -319,18 +324,6 @@ def setup_mqtt():
 if __name__ == '__main__':
     setup()
     client = setup_mqtt()
-
-    x = 0
-    y = 0
     while client.loop() == 0:
-        x += 1
-        y += 1
-        if x == 20:
-            if mqtt_connected:
-                check_offline()
-            else:
-                logging.warning('MQTT not connected. Skipping offline checks.')
-            x = 0
-        if y == 1000:
-            cleanup_old()
-            y = 0
+        schedule.run_pending()
+        time.sleep(1)
