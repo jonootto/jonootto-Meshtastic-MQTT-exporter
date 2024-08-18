@@ -358,7 +358,7 @@ def checkOffline():
                 if email:
                     logging.warning('Max time exceeded for ID: %s %s, Last Heard (Hours): %s, Max Age: %s - emailing %s from %s', id, shortname, total_hours, max_hours, email, email_sender)
                     subject = 'Meshtastic node %s - %s offline' % (id, shortname)
-                    localtimestamp = timestamp.astimezone(ZoneInfo('localtime'))
+                    localtimestamp = timestamp.astimezone(ZoneInfo('Pacific/Auckland'))
                     body = 'Node %s - %s was last seen at %s, %s hours ago' % (id,shortname, localtimestamp, total_hours)
                     #send email
                     send_email(subject,body,email)
