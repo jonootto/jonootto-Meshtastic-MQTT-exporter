@@ -1,9 +1,7 @@
 meshtastic 
-paho-mqtt>2
+paho-mqtt
 cryptography
 colorama
-prometheus_client
 psycopg[binary]
 python-dotenv
-pyyaml
 schedule

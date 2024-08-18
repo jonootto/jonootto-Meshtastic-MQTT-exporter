@@ -16,7 +16,6 @@ import random
 import smtplib
 from email.mime.text import MIMEText
 import schedule
-import time
 
 load_dotenv()
 
