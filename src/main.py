@@ -365,9 +365,8 @@ def checkOffline():
 
 def send_email(subject, body, recipient):
     # Debugging: Check the types of the inputs
-    logging.warning(f"email_sender: {email_sender}, type: {type(email_sender)}")
-    logging.warning(f"email_password: {email_password}, type: {type(email_password)}")
-    logging.warning(f"recipient: {recipient}, type: {type(recipient)}")
+    logging.debug(f"email_sender: {email_sender}, type: {type(email_sender)}")
+    logging.debug(f"recipient: {recipient}, type: {type(recipient)}")
 
     # Ensure recipient is a string and not a tuple
     if isinstance(recipient, tuple):
