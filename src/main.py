@@ -326,4 +326,3 @@ if __name__ == '__main__':
     client = setup_mqtt()
     while client.loop() == 0:
         schedule.run_pending()
-        time.sleep(0.05)
