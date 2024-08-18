@@ -342,6 +342,7 @@ def checkOffline():
                 email = watch[id][0]
                 max_hours = watch[id][1]
                 shortname = node_info[i]['short_name']
+                batterylevel = node_info[i]['battery_level']
                 logging.info('Watched node %s %s last seen %s hours ago',id, shortname,total_hours)
             except:
                 #NO MATCH
@@ -359,7 +360,7 @@ def checkOffline():
                     logging.warning('Max time exceeded for ID: %s %s, Last Heard (Hours): %s, Max Age: %s - emailing %s from %s', id, shortname, total_hours, max_hours, email, email_sender)
                     subject = 'Meshtastic node %s - %s offline' % (id, shortname)
                     localtimestamp = timestamp.astimezone(ZoneInfo('Pacific/Auckland'))
-                    body = 'Node %s - %s was last seen at %s, %s hours ago' % (id,shortname, localtimestamp, total_hours)
+                    body = 'Node %s - %s was last seen at %s, %s hours ago with %s percent battery' % (id,shortname, localtimestamp, total_hours, batterylevel)
                     #send email
                     send_email(subject,body,email)
 
