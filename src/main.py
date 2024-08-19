@@ -146,6 +146,7 @@ def node_db(message_packet, info, pos, env):
         lastHeard = getattr(message_packet, "rx_time")
         hopcount = getattr(message_packet, "hop_start")
         timestamp = datetime.datetime.fromtimestamp(lastHeard, datetime.UTC)
+        check_offline_monitored_node(sender)
         cursor.execute('UPDATE nodes SET online=True, hopcount=%s, LastHeard=%s WHERE id=%s', (hopcount, timestamp, sender))
 
         if info:
@@ -223,6 +224,7 @@ def create_node_id(node_number):
     return f"!{hex(node_number)[2:]}"
 
 def load_watch():
+    global watch
     with open('/app/watch.txt', 'r') as file:
         for line in file:
             id, email, hours = line.strip().split(',')
@@ -236,8 +238,8 @@ def setup():
     setup_tables()
     load_watch()
     cleanup_old()
-    schedule.every(10).minutes.do(check_offline)
-    schedule.every(60).minutes.do(cleanup_old)
+    schedule.every(1).minutes.do(check_offline)
+    schedule.every(2).minutes.do(cleanup_old)
 
 
 def load_db():
@@ -256,7 +258,29 @@ def cleanup_old():
             cursor.execute("DELETE FROM telemetry WHERE timestamp < now() - interval '30 days'")
         conn.commit()
 
+def check_offline_monitored_node(id):
+    nid = create_node_id(int(id))
+    logging.info(nid + " = " + id)
+    try:
+        if watch[nid]:
+            logging.info("Node exists in watched list!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            with psycopg.connect(db_connection_string) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT id, LastHeard FROM nodes WHERE (id=%s AND online=False)", (id,))
+                rows = cursor.fetchall()
+                if rows:
+                    msg = id + ' was offline ' + str(rows)
+                    logging.info(msg)
+                else:
+                    logging.info(id + ' not offline')
+    except:
+        logging.info("this isnt monitored " + str(watch))
+
+
+
+
 def check_offline():
+    load_watch()
     logging.info("Checking for offline nodes")
     node_info = load_db()
     now = datetime.datetime.now(datetime.UTC)
