@@ -29,7 +29,10 @@ db_host = os.environ["DBHOST"]
 db_user = os.environ["DBUSER"]
 db_pass = os.environ["DBPASS"]
 db_port = os.environ["DBPORT"]
-testmode = bool(os.environ["TESTMODE"])
+try:
+    testmode = bool(os.environ["TESTMODE"])
+except:
+    testmode = False
 email_password = os.environ["EPASSWORD"]
 email_sender = os.environ["ESENDER"]
 
