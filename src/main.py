@@ -64,6 +64,7 @@ def decode_encrypted(message_packet):
         nonce_packet_id = getattr(message_packet, "id").to_bytes(8, "little")
         nonce_from_node = getattr(message_packet, "from").to_bytes(8, "little")
         nonce = nonce_packet_id + nonce_from_node
+        logging.info('Nonce: %s',nonce)
 
         cipher = Cipher(algorithms.AES(key_bytes), modes.CTR(nonce), backend=default_backend())
         decryptor = cipher.decryptor()
@@ -262,31 +263,32 @@ def cleanup_old():
 
 def check_offline_monitored_node(id):
     nid = create_node_id(int(id))
+    output = False
     try:
-        #if watch[nid]:
-        if True:
+        if watch[nid]:
             with psycopg.connect(db_connection_string) as conn:
                 cursor = conn.cursor()
-                id = 4266707209
-                #cursor.execute("SELECT id, LastHeard FROM nodes WHERE (id=%s AND online=False)", (id,))
-                cursor.execute("SELECT LastHeard, short_name FROM nodes WHERE (id=%s)", (id,))
+                cursor.execute("SELECT LastHeard, short_name FROM nodes WHERE (id=%s AND online=False)", (id,))
                 row = cursor.fetchone()
                 if row:
-                    timestamp = row[0]
-                    sname = row[1]
-                    now = datetime.datetime.now(datetime.UTC)
-                    timegap = now - timestamp
-                    total_hours = round(timegap.total_seconds() / 3600, 2)
-                    localtimestamp = timestamp.astimezone(ZoneInfo('Pacific/Auckland'))
-                    localnow = now.astimezone(ZoneInfo('Pacific/Auckland'))
-                    msg = f'{nid} - {sname} has come back online at {localnow.strftime(timef)} after being offline for {total_hours} hours, since {localtimestamp.strftime(timef)}'
-                    logging.info(msg)
+                    output = True
     except:
-        #logging.info("")
+        output = False
         pass
 
-
-
+    if output:
+        timestamp = row[0]
+        sname = row[1]
+        now = datetime.datetime.now(datetime.UTC)
+        timegap = now - timestamp
+        total_hours = round(timegap.total_seconds() / 3600, 2)
+        localtimestamp = timestamp.astimezone(ZoneInfo('Pacific/Auckland'))
+        localnow = now.astimezone(ZoneInfo('Pacific/Auckland'))
+        msg = f'{nid} - {sname} has come back online at {localnow.strftime(timef)} after being offline for {total_hours} hours, since {localtimestamp.strftime(timef)}'
+        logging.info(msg)
+        email = watch[nid][0]
+        subject = f'Meshtastic Node {nid} - {sname} has come back online'
+        send_email(subject, msg, email)
 
 def check_offline():
     load_watch()
@@ -295,13 +297,13 @@ def check_offline():
     now = datetime.datetime.now(datetime.UTC)
     for i in node_info:
         thisnode = node_info[i]
-        id = thisnode['hexid']
         if thisnode['online'] != False:
             timestamp = thisnode['lastheard']
             timegap = now - timestamp
             total_hours = round(timegap.total_seconds() / 3600, 2)
             shortname = thisnode['short_name']
             try:
+                id = thisnode['hexid']
                 email = watch[id][0]
                 max_hours = watch[id][1]
                 batterylevel = thisnode['battery_level']
@@ -321,11 +323,10 @@ def check_offline():
                                     id, shortname, total_hours, max_hours, email, email_sender)
                     subject = f'Meshtastic node {id} - {shortname} offline'
                     localtimestamp = timestamp.astimezone(ZoneInfo('Pacific/Auckland'))
-                    body = f'Node {id} - {shortname} was last seen at {localtimestamp}, {total_hours} hours ago with {batterylevel}% battery'
+                    body = f'Node {id} - {shortname} was last seen at {localtimestamp.strftime(timef)}, {total_hours} hours ago with {batterylevel}% battery'
                     send_email(subject, body, email)
 
 def send_email(subject, body, recipient):
-    logging.debug(f"email_sender: {email_sender}, recipient: {recipient}")
 
     if isinstance(recipient, tuple):
         recipient = recipient[0]
@@ -337,10 +338,11 @@ def send_email(subject, body, recipient):
     
     try:
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp_server:
-            if testmode != True:
+            if not testmode:
                 smtp_server.login(email_sender, email_password)
                 smtp_server.sendmail(email_sender, recipient, msg.as_string())
-        logging.info("Message sent!")
+            else:
+                logging.info('Simulated Message %s sent: %s',subject, body)
     except Exception as e:
         logging.error("An error occurred: %s", e)
 
