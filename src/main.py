@@ -21,6 +21,7 @@ load_dotenv()
 
 FORMAT = '%(levelname)s: %(asctime)s - %(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT, datefmt='%H:%M:%S')
+timef = ("%H:%M:%S %d-%m-%Y")
 
 # Environment Variables
 db_name = os.environ["DBNAME"]
@@ -28,6 +29,7 @@ db_host = os.environ["DBHOST"]
 db_user = os.environ["DBUSER"]
 db_pass = os.environ["DBPASS"]
 db_port = os.environ["DBPORT"]
+testmode = bool(os.environ["TESTMODE"])
 email_password = os.environ["EPASSWORD"]
 email_sender = os.environ["ESENDER"]
 
@@ -260,21 +262,28 @@ def cleanup_old():
 
 def check_offline_monitored_node(id):
     nid = create_node_id(int(id))
-    logging.info(nid + " = " + id)
     try:
-        if watch[nid]:
-            logging.info("Node exists in watched list!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        #if watch[nid]:
+        if True:
             with psycopg.connect(db_connection_string) as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT id, LastHeard FROM nodes WHERE (id=%s AND online=False)", (id,))
-                rows = cursor.fetchall()
-                if rows:
-                    msg = id + ' was offline ' + str(rows)
+                id = 4266707209
+                #cursor.execute("SELECT id, LastHeard FROM nodes WHERE (id=%s AND online=False)", (id,))
+                cursor.execute("SELECT LastHeard, short_name FROM nodes WHERE (id=%s)", (id,))
+                row = cursor.fetchone()
+                if row:
+                    timestamp = row[0]
+                    sname = row[1]
+                    now = datetime.datetime.now(datetime.UTC)
+                    timegap = now - timestamp
+                    total_hours = round(timegap.total_seconds() / 3600, 2)
+                    localtimestamp = timestamp.astimezone(ZoneInfo('Pacific/Auckland'))
+                    localnow = now.astimezone(ZoneInfo('Pacific/Auckland'))
+                    msg = f'{nid} - {sname} has come back online at {localnow.strftime(timef)} after being offline for {total_hours} hours, since {localtimestamp.strftime(timef)}'
                     logging.info(msg)
-                else:
-                    logging.info(id + ' not offline')
     except:
-        logging.info("this isnt monitored " + str(watch))
+        #logging.info("")
+        pass
 
 
 
@@ -328,8 +337,9 @@ def send_email(subject, body, recipient):
     
     try:
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp_server:
-            smtp_server.login(email_sender, email_password)
-            smtp_server.sendmail(email_sender, recipient, msg.as_string())
+            if testmode != True:
+                smtp_server.login(email_sender, email_password)
+                smtp_server.sendmail(email_sender, recipient, msg.as_string())
         logging.info("Message sent!")
     except Exception as e:
         logging.error("An error occurred: %s", e)
