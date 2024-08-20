@@ -21,6 +21,7 @@ load_dotenv()
 
 FORMAT = '%(levelname)s: %(asctime)s - %(message)s'
 logging.basicConfig(level=logging.INFO, format=FORMAT, datefmt='%H:%M:%S')
+timef = ("%H:%M:%S %d-%m-%Y")
 
 # Environment Variables
 db_name = os.environ["DBNAME"]
@@ -28,6 +29,7 @@ db_host = os.environ["DBHOST"]
 db_user = os.environ["DBUSER"]
 db_pass = os.environ["DBPASS"]
 db_port = os.environ["DBPORT"]
+testmode = bool(os.environ["TESTMODE"])
 email_password = os.environ["EPASSWORD"]
 email_sender = os.environ["ESENDER"]
 
@@ -62,6 +64,7 @@ def decode_encrypted(message_packet):
         nonce_packet_id = getattr(message_packet, "id").to_bytes(8, "little")
         nonce_from_node = getattr(message_packet, "from").to_bytes(8, "little")
         nonce = nonce_packet_id + nonce_from_node
+        logging.info('Nonce: %s',nonce)
 
         cipher = Cipher(algorithms.AES(key_bytes), modes.CTR(nonce), backend=default_backend())
         decryptor = cipher.decryptor()
@@ -146,6 +149,7 @@ def node_db(message_packet, info, pos, env):
         lastHeard = getattr(message_packet, "rx_time")
         hopcount = getattr(message_packet, "hop_start")
         timestamp = datetime.datetime.fromtimestamp(lastHeard, datetime.UTC)
+        check_offline_monitored_node(sender)
         cursor.execute('UPDATE nodes SET online=True, hopcount=%s, LastHeard=%s WHERE id=%s', (hopcount, timestamp, sender))
 
         if info:
@@ -223,6 +227,7 @@ def create_node_id(node_number):
     return f"!{hex(node_number)[2:]}"
 
 def load_watch():
+    global watch
     with open('/app/watch.txt', 'r') as file:
         for line in file:
             id, email, hours = line.strip().split(',')
@@ -236,8 +241,8 @@ def setup():
     setup_tables()
     load_watch()
     cleanup_old()
-    schedule.every(10).minutes.do(check_offline)
-    schedule.every(60).minutes.do(cleanup_old)
+    schedule.every(1).minutes.do(check_offline)
+    schedule.every(2).minutes.do(cleanup_old)
 
 
 def load_db():
@@ -256,19 +261,49 @@ def cleanup_old():
             cursor.execute("DELETE FROM telemetry WHERE timestamp < now() - interval '30 days'")
         conn.commit()
 
+def check_offline_monitored_node(id):
+    nid = create_node_id(int(id))
+    output = False
+    try:
+        if watch[nid]:
+            with psycopg.connect(db_connection_string) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT LastHeard, short_name FROM nodes WHERE (id=%s AND online=False)", (id,))
+                row = cursor.fetchone()
+                if row:
+                    output = True
+    except:
+        output = False
+        pass
+
+    if output:
+        timestamp = row[0]
+        sname = row[1]
+        now = datetime.datetime.now(datetime.UTC)
+        timegap = now - timestamp
+        total_hours = round(timegap.total_seconds() / 3600, 2)
+        localtimestamp = timestamp.astimezone(ZoneInfo('Pacific/Auckland'))
+        localnow = now.astimezone(ZoneInfo('Pacific/Auckland'))
+        msg = f'{nid} - {sname} has come back online at {localnow.strftime(timef)} after being offline for {total_hours} hours, since {localtimestamp.strftime(timef)}'
+        logging.info(msg)
+        email = watch[nid][0]
+        subject = f'Meshtastic Node {nid} - {sname} has come back online'
+        send_email(subject, msg, email)
+
 def check_offline():
+    load_watch()
     logging.info("Checking for offline nodes")
     node_info = load_db()
     now = datetime.datetime.now(datetime.UTC)
     for i in node_info:
         thisnode = node_info[i]
-        id = thisnode['hexid']
         if thisnode['online'] != False:
             timestamp = thisnode['lastheard']
             timegap = now - timestamp
             total_hours = round(timegap.total_seconds() / 3600, 2)
             shortname = thisnode['short_name']
             try:
+                id = thisnode['hexid']
                 email = watch[id][0]
                 max_hours = watch[id][1]
                 batterylevel = thisnode['battery_level']
@@ -288,11 +323,10 @@ def check_offline():
                                     id, shortname, total_hours, max_hours, email, email_sender)
                     subject = f'Meshtastic node {id} - {shortname} offline'
                     localtimestamp = timestamp.astimezone(ZoneInfo('Pacific/Auckland'))
-                    body = f'Node {id} - {shortname} was last seen at {localtimestamp}, {total_hours} hours ago with {batterylevel}% battery'
+                    body = f'Node {id} - {shortname} was last seen at {localtimestamp.strftime(timef)}, {total_hours} hours ago with {batterylevel}% battery'
                     send_email(subject, body, email)
 
 def send_email(subject, body, recipient):
-    logging.debug(f"email_sender: {email_sender}, recipient: {recipient}")
 
     if isinstance(recipient, tuple):
         recipient = recipient[0]
@@ -304,9 +338,11 @@ def send_email(subject, body, recipient):
     
     try:
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp_server:
-            smtp_server.login(email_sender, email_password)
-            smtp_server.sendmail(email_sender, recipient, msg.as_string())
-        logging.info("Message sent!")
+            if not testmode:
+                smtp_server.login(email_sender, email_password)
+                smtp_server.sendmail(email_sender, recipient, msg.as_string())
+            else:
+                logging.info('Simulated Message %s sent: %s',subject, body)
     except Exception as e:
         logging.error("An error occurred: %s", e)
 

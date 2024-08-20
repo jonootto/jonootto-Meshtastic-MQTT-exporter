@@ -20,7 +20,7 @@ services:
     container_name: grafana
     restart: unless-stopped
     ports:
-     - '3000:3000'
+     - 3000:3000
     
   meshtastic:
     build: .
@@ -29,10 +29,11 @@ services:
       - ./watch.txt:/app/watch.txt
     environment:
       - DBNAME=meshtastic
-      - DBHOST=10.1.100.252
+      - DBHOST=db
       - DBUSER=postgres
       - DBPASS=example
       - DBPORT=5432
       - LOGGING=debug
       - EPASSWORD=password
       - ESENDER=wlg915alerts@gmail.com
+      - TESTMODE=True
