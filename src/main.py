@@ -9,45 +9,15 @@ import json
 import datetime
 from zoneinfo import ZoneInfo
 import psycopg
-from dotenv import load_dotenv
 import logging
-import os
 import random
 import smtplib
 from email.mime.text import MIMEText
 import schedule
-
-load_dotenv()
-
-FORMAT = '%(levelname)s: %(asctime)s - %(message)s'
-logging.basicConfig(level=logging.INFO, format=FORMAT, datefmt='%H:%M:%S')
-timef = ("%H:%M:%S %d-%m-%Y")
-
-# Environment Variables
-db_name = os.environ["DBNAME"]
-db_host = os.environ["DBHOST"]
-db_user = os.environ["DBUSER"]
-db_pass = os.environ["DBPASS"]
-db_port = os.environ["DBPORT"]
-try:
-    testmode = bool(os.environ["TESTMODE"])
-except KeyError:
-    testmode = False
-email_password = os.environ["EPASSWORD"]
-email_sender = os.environ["ESENDER"]
-
-# MQTT Configurations
-MQTT_BROKER = "mqtt.meshtastic.org"
-MQTT_PORT = 1883
-MQTT_USERNAME = "meshdev"
-# trunk-ignore(bandit/B105)
-MQTT_PASSWORD = "large4cats"
-root_topic = "msh/WLG_915/2/e/#"
+import config
 
 
-# Encryption Key
-key = "1PG7OiApB1nwvP+rz05pAQ==".replace('-', '+').replace('_', '/')
-padded_key = key.ljust(len(key) + ((4 - (len(key) % 4)) % 4), '=')
+logging.basicConfig(level=logging.DEBUG, format=config.FORMAT, datefmt='%H:%M:%S')
 
 # Global Variables
 message_ids = deque([], 200)
@@ -62,9 +32,10 @@ def process_message(mp, text_payload, is_encrypted):
         "to": getattr(mp, "to")
     }
     return text
+
 def decode_encrypted(message_packet):
     try:
-        key_bytes = base64.b64decode(padded_key.encode('ascii'))
+        key_bytes = base64.b64decode(config.padded_key.encode('ascii'))
         nonce_packet_id = getattr(message_packet, "id").to_bytes(8, "little")
         nonce_from_node = getattr(message_packet, "from").to_bytes(8, "little")
         nonce = nonce_packet_id + nonce_from_node
@@ -106,7 +77,7 @@ def decode_encrypted(message_packet):
 def on_connect(client, userdata, flags, reason_code, properties):
     global mqtt_connected
     if reason_code == 0:
-        logging.info(f"Connected to {MQTT_BROKER} on topic {root_topic}")
+        logging.info(f"Connected to {config.MQTT_BROKER} on topic {config.root_topic}")
         mqtt_connected = True
     else:
         logging.info(f"Failed to connect to MQTT broker with result code {str(reason_code)}")
@@ -238,7 +209,7 @@ def load_watch():
 
 def setup():
     global db_connection_string, mqtt_connected
-    db_connection_string = f"dbname={db_name} host={db_host} user={db_user} password={db_pass} port={db_port}"
+    db_connection_string = f"dbname={config.db_name} host={config.db_host} user={config.db_user} password={config.db_pass} port={config.db_port}"
     mqtt_connected = False  # Initialize the MQTT connection status
     check_database()
     setup_tables()
@@ -287,7 +258,7 @@ def check_offline_monitored_node(id):
         total_hours = round(timegap.total_seconds() / 3600, 2)
         localtimestamp = timestamp.astimezone(ZoneInfo('Pacific/Auckland'))
         localnow = now.astimezone(ZoneInfo('Pacific/Auckland'))
-        msg = f'{nid} - {sname} has come back online at {localnow.strftime(timef)} after being offline for {total_hours} hours, since {localtimestamp.strftime(timef)}'
+        msg = f'{nid} - {sname} has come back online at {localnow.strftime(config.timef)} after being offline for {total_hours} hours, since {localtimestamp.strftime(config.timef)}'
         logging.info(msg)
         email = watch[nid][0]
         subject = f'Meshtastic Node {nid} - {sname} has come back online'
@@ -323,10 +294,10 @@ def check_offline():
                     conn.commit()
                 if email:
                     logging.warning('Max time exceeded for ID: %s %s, Last Heard (Hours): %s, Max Age: %s - emailing %s from %s',
-                                    id, shortname, total_hours, max_hours, email, email_sender)
+                                    id, shortname, total_hours, max_hours, email, config.email_sender)
                     subject = f'Meshtastic node {id} - {shortname} offline'
                     localtimestamp = timestamp.astimezone(ZoneInfo('Pacific/Auckland'))
-                    body = f'Node {id} - {shortname} was last seen at {localtimestamp.strftime(timef)}, {total_hours} hours ago with {batterylevel}% battery'
+                    body = f'Node {id} - {shortname} was last seen at {localtimestamp.strftime(config.timef)}, {total_hours} hours ago with {batterylevel}% battery'
                     send_email(subject, body, email)
 
 def send_email(subject, body, recipient):
@@ -336,14 +307,14 @@ def send_email(subject, body, recipient):
 
     msg = MIMEText(body)
     msg['Subject'] = str(subject)
-    msg['From'] = str(email_sender)
+    msg['From'] = str(config.email_sender)
     msg['To'] = str(recipient)
     
     try:
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp_server:
-            if not testmode:
-                smtp_server.login(email_sender, email_password)
-                smtp_server.sendmail(email_sender, recipient, msg.as_string())
+            if not config.testmode:
+                smtp_server.login(config.email_sender, config.email_password)
+                smtp_server.sendmail(config.email_sender, recipient, msg.as_string())
             else:
                 logging.info('Simulated Message %s sent: %s',subject, body)
     except Exception as e:
@@ -355,9 +326,9 @@ def setup_mqtt():
     client = mqtt.Client(client_id=f"StatsClient{random.randint(1000, 9999)}", protocol=mqtt.MQTTv5,callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
     client.on_connect = on_connect
     client.on_message = on_message
-    client.username_pw_set(username=MQTT_USERNAME, password=MQTT_PASSWORD)
-    client.connect(MQTT_BROKER, MQTT_PORT, 60)
-    client.subscribe(root_topic, qos=0)
+    client.username_pw_set(username=config.MQTT_USERNAME, password=config.MQTT_PASSWORD)
+    client.connect(config.MQTT_BROKER, config.MQTT_PORT, 60)
+    client.subscribe(config.root_topic, qos=0)
     return client
 
 if __name__ == '__main__':
