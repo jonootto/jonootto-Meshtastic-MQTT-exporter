@@ -31,7 +31,7 @@ db_pass = os.environ["DBPASS"]
 db_port = os.environ["DBPORT"]
 try:
     testmode = bool(os.environ["TESTMODE"])
-except:
+except KeyError:
     testmode = False
 email_password = os.environ["EPASSWORD"]
 email_sender = os.environ["ESENDER"]
