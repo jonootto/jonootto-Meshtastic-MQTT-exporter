@@ -37,6 +37,7 @@ email_sender = os.environ["ESENDER"]
 MQTT_BROKER = "mqtt.meshtastic.org"
 MQTT_PORT = 1883
 MQTT_USERNAME = "meshdev"
+# trunk-ignore(bandit/B105)
 MQTT_PASSWORD = "large4cats"
 root_topic = "msh/WLG_915/2/e/#"
 
@@ -57,14 +58,13 @@ def process_message(mp, text_payload, is_encrypted):
         "id": getattr(mp, "id"),
         "to": getattr(mp, "to")
     }
-
+    return text
 def decode_encrypted(message_packet):
     try:
         key_bytes = base64.b64decode(padded_key.encode('ascii'))
         nonce_packet_id = getattr(message_packet, "id").to_bytes(8, "little")
         nonce_from_node = getattr(message_packet, "from").to_bytes(8, "little")
         nonce = nonce_packet_id + nonce_from_node
-        logging.info('Nonce: %s',nonce)
 
         cipher = Cipher(algorithms.AES(key_bytes), modes.CTR(nonce), backend=default_backend())
         decryptor = cipher.decryptor()
@@ -88,7 +88,7 @@ def decode_encrypted(message_packet):
             logging.debug("TELEMETRY_APP: %s", env)
         elif message_packet.decoded.portnum == portnums_pb2.TEXT_MESSAGE_APP:
             text_payload = message_packet.decoded.payload.decode("utf-8")
-            process_message(message_packet, text_payload, is_encrypted=True)
+            #process_message(message_packet, text_payload, is_encrypted=True)
             logging.info("TEXT_MESSAGE_APP: %s", text_payload)
         else:
             loc = next((i for i, v in enumerate(message_types) if v[1] == message_packet.decoded.portnum), None)
@@ -297,7 +297,7 @@ def check_offline():
     now = datetime.datetime.now(datetime.UTC)
     for i in node_info:
         thisnode = node_info[i]
-        if thisnode['online'] != False:
+        if thisnode['online'] is not False:
             timestamp = thisnode['lastheard']
             timegap = now - timestamp
             total_hours = round(timegap.total_seconds() / 3600, 2)
@@ -348,6 +348,7 @@ def send_email(subject, body, recipient):
 
 def setup_mqtt():
     global mqtt_connected
+    # trunk-ignore(bandit/B311)
     client = mqtt.Client(client_id=f"StatsClient{random.randint(1000, 9999)}", protocol=mqtt.MQTTv5,callback_api_version=mqtt.CallbackAPIVersion.VERSION2)
     client.on_connect = on_connect
     client.on_message = on_message
