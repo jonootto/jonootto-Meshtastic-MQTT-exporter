@@ -23,8 +23,6 @@ MQTT_USERNAME = "meshdev"
 # trunk-ignore(bandit/B105)
 MQTT_PASSWORD = "large4cats"
 root_topic = "msh/WLG_915/2/e/#"
-
-FORMAT = '%(levelname)s: %(asctime)s - %(message)s'
 timef = ("%H:%M:%S %d-%m-%Y")
 
 # Encryption Key
