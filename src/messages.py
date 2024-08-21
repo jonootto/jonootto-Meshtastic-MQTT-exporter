@@ -2,7 +2,7 @@ import base64
 import logs
 import config
 import json
-from meshtastic import mesh_pb2, mqtt_pb2, portnums_pb2, telemetry_pb2
+from meshtastic import mesh_pb2, portnums_pb2, telemetry_pb2
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 from collections import deque
@@ -18,25 +18,17 @@ message_ids = deque([], 200)
 def create_node_id(node_number):
     return f"!{hex(node_number)[2:]}"
 
-def process_message(mp, text_payload, is_encrypted):
-    text = {
-        "message": text_payload,
-        "from": getattr(mp, "from"),
-        "id": getattr(mp, "id"),
-        "to": getattr(mp, "to")
-    }
-    return text
 
-
-
-
+def get_nonce(message_packet):
+    nonce_packet_id = getattr(message_packet, "id").to_bytes(8, "little")
+    nonce_from_node = getattr(message_packet, "from").to_bytes(8, "little")
+    nonce = nonce_packet_id + nonce_from_node
+    return nonce
 
 def decode_encrypted(message_packet):
     try:
         key_bytes = base64.b64decode(config.padded_key.encode('ascii'))
-        nonce_packet_id = getattr(message_packet, "id").to_bytes(8, "little")
-        nonce_from_node = getattr(message_packet, "from").to_bytes(8, "little")
-        nonce = nonce_packet_id + nonce_from_node
+        nonce = get_nonce(message_packet)
 
         cipher = Cipher(algorithms.AES(key_bytes), modes.CTR(nonce), backend=default_backend())
         decryptor = cipher.decryptor()
@@ -60,13 +52,13 @@ def decode_encrypted(message_packet):
             logs.logging.debug("TELEMETRY_APP: %s", env)
         elif message_packet.decoded.portnum == portnums_pb2.TEXT_MESSAGE_APP:
             text_payload = message_packet.decoded.payload.decode("utf-8")
-            #process_message(message_packet, text_payload, is_encrypted=True)
             logs.logging.info("TEXT_MESSAGE_APP: %s", text_payload)
         else:
             loc = next((i for i, v in enumerate(message_types) if v[1] == message_packet.decoded.portnum), None)
             if loc is not None:
                 type = message_types[loc][0]
                 logs.logging.warning(logs.Fore.RED + "Unknown App %d %s" % (message_packet.decoded.portnum, type) + logs.Style.RESET_ALL)
+
     except Exception as e:
         logs.logging.warning("Decryption failed: %s", str(e))
     finally:
