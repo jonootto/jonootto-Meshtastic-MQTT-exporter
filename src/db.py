@@ -66,7 +66,17 @@ def setup_tables():
             battery_level smallint,
             voltage decimal,
             channel_utilization decimal,
-            air_util_tx decimal
+            air_util_tx decimal,
+            uptime_seconds int
+        );""",
+        """CREATE TABLE IF NOT EXISTS environment (
+            id SERIAL PRIMARY KEY,
+            node BIGINT REFERENCES nodes(id),
+            timestamp TIMESTAMPTZ NOT NULL,
+            temperature decimal(4,2),
+            humidity decimal(5,2),
+            pressure decimal,
+            air_quality smallint
         );"""
     ]
     try:
