@@ -2,7 +2,7 @@ FROM python:slim
 	
 WORKDIR /app
 COPY src/requirements.txt .
-RUN pip install -r requirements.txt
-COPY src/main.py .
+RUN pip3 install --upgrade --no-cache-dir -r requirements.txt
+COPY src/*.py .
 
 ENTRYPOINT [ "python", "main.py" ]
