@@ -74,40 +74,47 @@ def message_seen(message_packet):
 
 def node_db(message_packet, info, pos, env):
     sender = str(getattr(message_packet, "from"))
+    nid = create_node_id(int(sender))
     with db.psycopg.connect(db.db_connection_string) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM nodes WHERE id=%s", (sender,))
-        if not cursor.fetchall():
-            nid = create_node_id(int(sender))
-            cursor.execute("INSERT INTO nodes (id, hexid) VALUES (%s, %s)", (sender, nid))
-            logs.logging.info("New node added to DB")
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id FROM nodes WHERE id=%s", (sender,))
+            if not cursor.fetchall():
+                cursor.execute("INSERT INTO nodes (id, hexid) VALUES (%s, %s)", (sender, nid))
+                logs.logging.info("New node added to DB")
 
-        lastHeard = getattr(message_packet, "rx_time")
-        hopcount = getattr(message_packet, "hop_start")
-        timestamp = datetime.datetime.fromtimestamp(lastHeard, datetime.UTC)
-        monitor.check_offline_monitored_node(sender)
-        cursor.execute('UPDATE nodes SET online=True, hopcount=%s, LastHeard=%s WHERE id=%s', (hopcount, timestamp, sender))
+            lastHeard = message_packet.rx_time
+            hopcount = message_packet.hop_start
+            timestamp = datetime.datetime.fromtimestamp(lastHeard, datetime.UTC)
+            monitor.check_offline_monitored_node(sender)
+            cursor.execute('UPDATE nodes SET online=True, hopcount=%s, LastHeard=%s WHERE id=%s', (hopcount, timestamp, sender))
 
-        if info:
-            cursor.execute('UPDATE nodes SET long_name=%s, short_name=%s, hardware=%s, role=%s WHERE id=%s',
-                           (info.long_name, info.short_name, info.hw_model, info.role, sender))
-        elif pos:
-            lat = str(getattr(pos, "latitude_i") / 10000000) if pos.latitude_i else None
-            lon = str(getattr(pos, "longitude_i") / 10000000) if pos.longitude_i else None
-            alt = str(getattr(pos, "altitude", None))
-            if int(alt) > 32000:
-                logs.logging.warning("Impossible ALT: %s from: %s", alt, create_node_id(int(sender)))
-                alt = None
-            cursor.execute('UPDATE nodes SET latitude=%s, longitude=%s, altitude=%s WHERE id=%s', (lat, lon, alt, sender))
-        elif env:
-            dev = getattr(env, "device_metrics")
-            telem = {metric: str(round(getattr(dev, metric, 0), 3)) if getattr(dev, metric, 0) != 0 else None
-                     for metric in ["battery_level", "voltage", "channel_utilization", "air_util_tx"]}
-            telem["id"] = sender
-            if any(telem.values()):
-                logs.logging.debug(json.dumps(telem, indent=4))
-                cursor.execute('UPDATE nodes SET battery_level=%s, voltage=%s, channel_utilization=%s, air_util_tx=%s WHERE id=%s',
-                               (telem["battery_level"], telem["voltage"], telem["channel_utilization"], telem["air_util_tx"], telem["id"]))
-                cursor.execute('INSERT INTO telemetry (node, timestamp, battery_level, voltage, channel_utilization, air_util_tx) VALUES (%s, %s, %s, %s, %s, %s)',
-                               (telem["id"], timestamp, telem["battery_level"], telem["voltage"], telem["channel_utilization"], telem["air_util_tx"]))
-        conn.commit()
+            if info:
+                cursor.execute('UPDATE nodes SET long_name=%s, short_name=%s, hardware=%s, role=%s WHERE id=%s',
+                               (info.long_name, info.short_name, info.hw_model, info.role, sender))
+            elif pos:
+                lat = str(pos.latitude_i / 10000000) if pos.latitude_i else None
+                lon = str(pos.longitude_i / 10000000) if pos.longitude_i else None
+                alt = str(pos.altitude)
+                #logs.logging.info('Lat: %s Lon: %s Alt: %s',lat,lon,alt)
+                if int(alt) > 32000:
+                    logs.logging.warning("Impossible ALT: %s from: %s", alt, nid)
+                    alt = None
+                cursor.execute('UPDATE nodes SET latitude=%s, longitude=%s, altitude=%s WHERE id=%s', (lat, lon, alt, sender))
+            elif env:
+                dev = getattr(env, "device_metrics")
+                telem = {metric: str(round(getattr(dev, metric, 0), 3)) if getattr(dev, metric, 0) != 0 else None
+                         for metric in ["battery_level", "voltage", "channel_utilization", "air_util_tx"]}
+                telem["id"] = sender
+                if any(telem.values()):
+                    logs.logging.info('Telem From '+ nid)
+                    logs.logging.info(message_packet)
+                    if nid == "!43560564" or nid == "!43563a10":
+                        logs.logging.info(json.dumps(telem, indent=4))
+                        logs.logging.info(json.dumps(dev, indent=4))
+
+
+                    cursor.execute('UPDATE nodes SET battery_level=%s, voltage=%s, channel_utilization=%s, air_util_tx=%s WHERE id=%s',
+                                   (telem["battery_level"], telem["voltage"], telem["channel_utilization"], telem["air_util_tx"], telem["id"]))
+                    cursor.execute('INSERT INTO telemetry (node, timestamp, battery_level, voltage, channel_utilization, air_util_tx) VALUES (%s, %s, %s, %s, %s, %s)',
+                                   (telem["id"], timestamp, telem["battery_level"], telem["voltage"], telem["channel_utilization"], telem["air_util_tx"]))
+            conn.commit()
