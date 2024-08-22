@@ -83,7 +83,7 @@ def create_statement_node(data,sender,timestamp):
         if fields:
             statement = 'UPDATE nodes SET'
             for field, value in fields:
-                rValue = round(value,2)
+                rValue = round(value,3)
                 statement += f" {field.name}={rValue},"
             statement += f" LastHeard='{timestamp}' WHERE id={sender}"
         else:
@@ -102,7 +102,7 @@ def create_statement_telem(data,sender,table,timestamp):
             statement = f'INSERT INTO {table} ('
             statement2 = ""
             for field, value in fields:
-                rValue = round(value,2)
+                rValue = round(value,3)
                 statement += f'{field.name}, '
                 statement2 += f'{rValue}, '
             statement += 'node, timestamp'
