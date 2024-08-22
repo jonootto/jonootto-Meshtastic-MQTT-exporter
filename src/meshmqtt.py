@@ -12,7 +12,7 @@ def setup_mqtt():
     client.on_connect = on_connect
     client.on_message = on_message
     client.username_pw_set(username=config.MQTT_USERNAME, password=config.MQTT_PASSWORD)
-    client.connect(config.MQTT_BROKER, config.MQTT_PORT, 60)
+    client.connect(config.MQTT_BROKER, config.MQTT_PORT, 30)
     client.subscribe(config.root_topic, qos=0)
     return client
 

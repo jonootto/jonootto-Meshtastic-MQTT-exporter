@@ -3,6 +3,31 @@ import config
 import logs
 
 db_connection_string = f"dbname={config.db_name} host={config.db_host} user={config.db_user} password={config.db_pass} port={config.db_port}"
+nodb_connection_string = f"host={config.db_host} user={config.db_user} password={config.db_pass} port={config.db_port}"
+
+def check_db():
+    exists = False
+    statement="SELECT datname FROM pg_database;"
+    try:
+        with psycopg.connect(nodb_connection_string) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(statement)
+                rows = cursor.fetchall()
+                for row in rows:
+                    if row[0] == 'meshtastic':
+                        exists = True
+    except psycopg.Error:
+        exists = False
+    return exists
+
+def create_db():
+        logs.logging.info('Creating meshtastic DB')
+        statement="CREATE DATABASE meshtastic;"
+        with psycopg.connect(nodb_connection_string) as conn:
+            conn.autocommit = True
+            with conn.cursor() as cursor:
+                cursor.execute(statement)
+            conn.commit()
 
 
 def load_db():
@@ -27,6 +52,7 @@ def setup_tables():
             altitude smallint,
             battery_level smallint,
             voltage decimal,
+            uptime_seconds int,
             channel_utilization decimal,
             air_util_tx decimal,
             role VARCHAR(32),
@@ -41,7 +67,31 @@ def setup_tables():
             battery_level smallint,
             voltage decimal,
             channel_utilization decimal,
-            air_util_tx decimal
+            air_util_tx decimal,
+            uptime_seconds int
+        );""",
+        """CREATE TABLE IF NOT EXISTS environment (
+            id SERIAL PRIMARY KEY,
+            node BIGINT REFERENCES nodes(id),
+            timestamp TIMESTAMPTZ NOT NULL,
+            temperature decimal(4,2),
+            relative_humidity decimal(5,2),
+            barometric_pressure decimal,
+            iaq smallint,
+            voltage decimal,
+            current decimal,
+            gas_resistance decimal
+        );""",
+        """CREATE TABLE IF NOT EXISTS power (
+            id SERIAL PRIMARY KEY,
+            node BIGINT REFERENCES nodes(id),
+            timestamp TIMESTAMPTZ NOT NULL,
+            ch1_voltage decimal,
+            ch1_current decimal,
+            ch2_voltage decimal,
+            ch2_current decimal,
+            ch3_voltage decimal,
+            ch3_current decimal
         );"""
     ]
     try:
@@ -52,14 +102,6 @@ def setup_tables():
                 conn.commit()
     except psycopg.Error as e:
         logs.logging.error(e)
-
-def check_database():
-    try:
-        with psycopg.connect(db_connection_string):
-            pass
-    except psycopg.Error as e:
-        logs.logging.warning(e)
-        exit()
 
 
 def cleanup_old():

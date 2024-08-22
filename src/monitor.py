@@ -21,7 +21,6 @@ def check_offline_monitored_node(id):
                     output = True
     except:
         output = False
-        pass
 
     if output:
         timestamp = row[0]
@@ -66,7 +65,7 @@ def check_offline():
                         cursor.execute('UPDATE nodes SET online=False WHERE hexid=%s', (id,))
                     conn.commit()
                 if email:
-                    logs.logging.warning('Max time exceeded for ID: %s %s, Last Heard (Hours): %s, Max Age: %s - emailing %s from %s',
+                    logs.logging.warning('Max time exceeded for ID: %s - %s, Last Heard (Hours): %s, Max Age: %s - emailing %s from %s',
                                     id, shortname, total_hours, max_hours, email, config.email_sender)
                     subject = f'Meshtastic node {id} - {shortname} offline'
                     localtimestamp = timestamp.astimezone(ZoneInfo('Pacific/Auckland'))
