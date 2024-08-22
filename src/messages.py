@@ -77,6 +77,48 @@ def message_seen(message_packet):
     message_ids.append(message_id)
     return False
 
+def create_statement_node(data,sender,timestamp):
+    try:
+        fields = data.ListFields()
+        if fields:
+            statement = 'UPDATE nodes SET'
+            for field, value in fields:
+                rValue = round(value,2)
+                statement += f" {field.name}={rValue},"
+            statement += f" LastHeard='{timestamp}' WHERE id={sender}"
+        else:
+            statement = None
+            #logs.logging.info(f"Field name: {field.name}, Field value: {rValue}")
+    except Exception as e:
+        logs.logging.info(e)
+        statement = None
+    return statement
+
+def create_statement_telem(data,sender,table,timestamp):
+    #cursor.execute('INSERT INTO telemetry (node, timestamp, battery_level, voltage, channel_utilization, air_util_tx) VALUES (%s, %s, %s, %s, %s, %s)',(sender, timestamp, telem["battery_level"], telem["voltage"], telem["channel_utilization"], telem["air_util_tx"]))
+    try:
+        fields = data.ListFields()
+        if fields:
+            statement = f'INSERT INTO {table} ('
+            statement2 = ""
+            for field, value in fields:
+                rValue = round(value,2)
+                statement += f'{field.name}, '
+                statement2 += f'{rValue}, '
+            statement += 'node, timestamp'
+            statement2 += f"{sender}, '{timestamp}')"
+            statement = statement + ') VALUES (' + statement2
+        else:
+            statement = None
+            #logs.logging.info(f"Field name: {field.name}, Field value: {rValue}")
+    except Exception as e:
+        logs.logging.info(e)
+        statement = None
+    return statement
+
+
+
+
 def node_db(message_packet, info, pos, tel):
     sender = str(getattr(message_packet, "from"))
     nid = create_node_id(int(sender))
@@ -100,63 +142,26 @@ def node_db(message_packet, info, pos, tel):
                 lat = str(pos.latitude_i / 10000000) if pos.latitude_i else None
                 lon = str(pos.longitude_i / 10000000) if pos.longitude_i else None
                 alt = str(pos.altitude)
-                logs.logging.info('Lat: %s Lon: %s Alt: %s',lat,lon,alt)
+                logs.logging.debug('Lat: %s Lon: %s Alt: %s',lat,lon,alt)
                 if int(alt) > 32000:
                     logs.logging.warning("Impossible ALT: %s from: %s", alt, nid)
                     alt = None
                 cursor.execute('UPDATE nodes SET latitude=%s, longitude=%s, altitude=%s WHERE id=%s', (lat, lon, alt, sender))
             elif tel:
+
                 dev = tel.device_metrics
                 env = tel.environment_metrics
                 pwr = tel.power_metrics
-                try:
-                    #telem = {metric: str(round(getattr(dev, metric, 0), 3)) if getattr(dev, metric, 0) != 0 else None
-                    #     for metric in ["battery_level", "voltage", "channel_utilization", "air_util_tx","uptime_seconds"]}
-                    for field, value in dev.ListFields():
-                        rValue = round(value,2)
-                        logs.logging.info(f"Field name: {field.name}, Field value: {rValue}")
-                except Exception as e:
-                    logs.logging.info(e)
-                try:
-                    #environment = {metric: str(round(getattr(env, metric, 0), 3)) if getattr(env, metric, 0) != 0 else None
-                    #     for metric in ["relative_humidity", "temperature","barometric_pressure"]}
-                    for field, value in env.ListFields():
-                        rValue = round(value,2)
-                        logs.logging.info(f"Field name: {field.name}, Field value: {rValue}")
-                except Exception as e:
-                    logs.logging.info(e)
-                try:
-                    #power = {metric: str(round(getattr(pwr, metric, 0), 3)) if getattr(pwr, metric, 0) != 0 else None
-                    #     for metric in ["ch1_voltage", "ch1_current","ch2_voltage", "ch2_current","ch3_voltage", "ch3_current"]}
-                    for field, value in pwr.ListFields():
-                        rValue = round(value,2)
-                        logs.logging.info(f"Field name: {field.name}, Field value: {rValue}")
-                except Exception as e:
-                    logs.logging.info(e)
 
+                statement ={}
+                statement['nodes'] = create_statement_node(dev,sender,timestamp)
+                statement['telem'] = create_statement_telem(dev,sender,'telemetry',timestamp)
+                statement['power'] = create_statement_telem(pwr,sender,'power',timestamp)
+                statement['env'] = create_statement_telem(env,sender,'environment',timestamp)
 
+                for sql in statement.values():
+                    if sql:
+                        logs.logging.info(sql)
+                        cursor.execute(sql)
 
-                if any(telem.values()):
-                    #if nid == "!43560564" or nid == "!43563a10":
-
-                    battery_level = telem["battery_level"]
-                    voltage = telem["voltage"]
-                    channel_utilization = telem["channel_utilization"]
-                    air_util_tx = telem["air_util_tx"]
-                    uptime_seconds = telem["uptime_seconds"]
-
-                    statement_nodes_base = 'UPDATE nodes SET'
-                    statement_nodes_end =  f'WHERE id={sender}'
-
-                    cursor.execute('UPDATE nodes SET battery_level=%s, voltage=%s, channel_utilization=%s, air_util_tx=%s WHERE id=%s',
-                                   (telem["battery_level"], telem["voltage"], telem["channel_utilization"], telem["air_util_tx"], sender))
-                    cursor.execute('INSERT INTO telemetry (node, timestamp, battery_level, voltage, channel_utilization, air_util_tx) VALUES (%s, %s, %s, %s, %s, %s)',
-                                   (sender, timestamp, telem["battery_level"], telem["voltage"], telem["channel_utilization"], telem["air_util_tx"]))
-            
-                if any(environment.values()):
-                    pass
-                if any(power.values()):
-                    pass
-            
-            
             conn.commit()

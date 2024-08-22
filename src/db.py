@@ -52,6 +52,7 @@ def setup_tables():
             altitude smallint,
             battery_level smallint,
             voltage decimal,
+            uptime_seconds int,
             channel_utilization decimal,
             air_util_tx decimal,
             role VARCHAR(32),
@@ -74,9 +75,23 @@ def setup_tables():
             node BIGINT REFERENCES nodes(id),
             timestamp TIMESTAMPTZ NOT NULL,
             temperature decimal(4,2),
-            humidity decimal(5,2),
-            pressure decimal,
-            air_quality smallint
+            relative_humidity decimal(5,2),
+            barometric_pressure decimal,
+            iaq smallint,
+            voltage decimal,
+            current decimal,
+            gas_resistance decimal
+        );""",
+        """CREATE TABLE IF NOT EXISTS power (
+            id SERIAL PRIMARY KEY,
+            node BIGINT REFERENCES nodes(id),
+            timestamp TIMESTAMPTZ NOT NULL,
+            ch1_voltage decimal,
+            ch1_current decimal,
+            ch2_voltage decimal,
+            ch2_current decimal,
+            ch3_voltage decimal,
+            ch3_current decimal
         );"""
     ]
     try:
