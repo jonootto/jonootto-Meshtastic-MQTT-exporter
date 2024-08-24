@@ -75,7 +75,7 @@ def setup_tables():
     node_statements = create_column_statement(dbvars.node_columns,"nodes")
     run_sql(node_statements)
     add_columns("environment",meshtastic.telemetry_pb2.EnvironmentMetrics.DESCRIPTOR)
-    add_columns("telemetry",meshtastic.telemetry_pb2.Telemetry.DESCRIPTOR)
+    add_columns("telemetry",meshtastic.telemetry_pb2.DeviceMetrics.DESCRIPTOR)
     add_columns("power",meshtastic.telemetry_pb2.PowerMetrics.DESCRIPTOR)
 
 

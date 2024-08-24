@@ -31,13 +31,11 @@ def decode_encrypted(message_packet):
 
         cipher = Cipher(algorithms.AES(key_bytes), modes.CTR(nonce), backend=default_backend())
         decryptor = cipher.decryptor()
-        decrypted_bytes = decryptor.update(getattr(message_packet, "encrypted")) + decryptor.finalize()
+        decrypted_bytes = decryptor.update(message_packet.encrypted) + decryptor.finalize()
 
         data = mesh_pb2.Data()
         data.ParseFromString(decrypted_bytes)
         message_packet.decoded.CopyFrom(data)
-
-        msgs = module_
 
 
         if message_packet.decoded.portnum == portnums_pb2.NODEINFO_APP:
