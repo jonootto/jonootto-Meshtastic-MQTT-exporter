@@ -14,13 +14,15 @@ services:
     restart: always
     ports:
       - 8080:8080
+    depends_on:
+      - db
 
-  grafana:
-    image: grafana/grafana
-    container_name: grafana
-    restart: unless-stopped
-    ports:
-     - 3000:3000
+  #grafana:
+  #  image: grafana/grafana
+  #  container_name: grafana
+  #  restart: unless-stopped
+  #  ports:
+  #   - 3000:3000
     
   meshtastic:
     build: .
@@ -37,3 +39,5 @@ services:
       - EPASSWORD=password
       - ESENDER=wlg915alerts@gmail.com
       - TESTMODE=True
+    depends_on:
+      - db
