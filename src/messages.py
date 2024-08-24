@@ -10,7 +10,6 @@ import db
 import datetime
 import monitor
 
-
 message_types = portnums_pb2.PortNum.items()
 message_ids = deque([], 200)
 
@@ -38,6 +37,8 @@ def decode_encrypted(message_packet):
         data.ParseFromString(decrypted_bytes)
         message_packet.decoded.CopyFrom(data)
 
+        msgs = module_
+
 
         if message_packet.decoded.portnum == portnums_pb2.NODEINFO_APP:
             info = mesh_pb2.User()
@@ -50,7 +51,6 @@ def decode_encrypted(message_packet):
         elif message_packet.decoded.portnum == portnums_pb2.TELEMETRY_APP:
             logs.logging.debug("TELEM")
             tel = telemetry_pb2.Telemetry()
-            telemetry_pb2.Telemetry()
             tel.ParseFromString(message_packet.decoded.payload)
             logs.logging.debug("TELEMETRY_APP: %s", tel)
         elif message_packet.decoded.portnum == portnums_pb2.TEXT_MESSAGE_APP:

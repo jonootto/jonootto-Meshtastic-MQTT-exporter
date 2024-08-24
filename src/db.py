@@ -1,9 +1,16 @@
 import psycopg
 import config
 import logs
+import meshtastic
+import dbvars
 
-db_connection_string = f"dbname={config.db_name} host={config.db_host} user={config.db_user} password={config.db_pass} port={config.db_port}"
 nodb_connection_string = f"host={config.db_host} user={config.db_user} password={config.db_pass} port={config.db_port}"
+db_connection_string = f"dbname={config.db_name} {nodb_connection_string}"
+
+reverse_type_map = {v: k for k, v in dbvars.FieldDescriptor.__dict__.items() if k.startswith('TYPE_')}
+
+def get_field_type(number):
+    return reverse_type_map.get(number,0)
 
 def check_db():
     exists = False
@@ -39,70 +46,44 @@ def load_db():
             node_info = {str(row[0]): {desc.name: value for desc, value in zip(cursor.description, row)} for row in rows}
     return node_info
 
-def setup_tables():
-    statements = [
-        """CREATE TABLE IF NOT EXISTS nodes (
-            id BIGINT PRIMARY KEY,
-            hexid VARCHAR(9),
-            long_name VARCHAR(128),
-            short_name VARCHAR(8),
-            hardware VARCHAR(32),
-            latitude decimal,
-            longitude decimal,
-            altitude smallint,
-            battery_level smallint,
-            voltage decimal,
-            uptime_seconds int,
-            channel_utilization decimal,
-            air_util_tx decimal,
-            role VARCHAR(32),
-            hopcount smallint,
-            LastHeard TIMESTAMPTZ,
-            online boolean
-        );""",
-        """CREATE TABLE IF NOT EXISTS telemetry (
-            id SERIAL PRIMARY KEY,
-            node BIGINT REFERENCES nodes(id),
-            timestamp TIMESTAMPTZ NOT NULL,
-            battery_level smallint,
-            voltage decimal,
-            channel_utilization decimal,
-            air_util_tx decimal,
-            uptime_seconds int
-        );""",
-        """CREATE TABLE IF NOT EXISTS environment (
-            id SERIAL PRIMARY KEY,
-            node BIGINT REFERENCES nodes(id),
-            timestamp TIMESTAMPTZ NOT NULL,
-            temperature decimal(4,2),
-            relative_humidity decimal(5,2),
-            barometric_pressure decimal,
-            iaq smallint,
-            voltage decimal,
-            current decimal,
-            gas_resistance decimal
-        );""",
-        """CREATE TABLE IF NOT EXISTS power (
-            id SERIAL PRIMARY KEY,
-            node BIGINT REFERENCES nodes(id),
-            timestamp TIMESTAMPTZ NOT NULL,
-            ch1_voltage decimal,
-            ch1_current decimal,
-            ch2_voltage decimal,
-            ch2_current decimal,
-            ch3_voltage decimal,
-            ch3_current decimal
-        );"""
-    ]
+def run_sql(statements):
     try:
         with psycopg.connect(db_connection_string) as conn:
-            for statement in statements:
+            for statement in statements.values():
                 with conn.cursor() as cursor:
                     cursor.execute(statement)
-                conn.commit()
+            conn.commit()
     except psycopg.Error as e:
         logs.logging.error(e)
 
+
+def create_column_statement(columns,tablename):
+    statement = {}
+    header = f"ALTER TABLE {tablename} ADD COLUMN IF NOT EXISTS "
+    for column_name, column_type in columns.items():
+        statement[column_name] =  f'{header} {column_name} {column_type};'
+    return statement
+
+
+def setup_tables():
+    create_statements = {}
+    create_statements["nodes"] = """CREATE TABLE IF NOT EXISTS nodes (id BIGINT PRIMARY KEY);"""
+    create_statements["environment"] = """CREATE TABLE IF NOT EXISTS environment (id SERIAL PRIMARY KEY,node BIGINT REFERENCES nodes(id),timestamp TIMESTAMPTZ NOT NULL);"""
+    create_statements["telemetry"] =  """CREATE TABLE IF NOT EXISTS telemetry (id SERIAL PRIMARY KEY, node BIGINT REFERENCES nodes(id), timestamp TIMESTAMPTZ NOT NULL);"""
+    create_statements["power"] = """CREATE TABLE IF NOT EXISTS power (id SERIAL PRIMARY KEY, node BIGINT REFERENCES nodes(id), timestamp TIMESTAMPTZ NOT NULL);"""
+    run_sql(create_statements)
+    node_statements = create_column_statement(dbvars.node_columns,"nodes")
+    run_sql(node_statements)
+    add_columns("environment",meshtastic.telemetry_pb2.EnvironmentMetrics.DESCRIPTOR)
+    add_columns("telemetry",meshtastic.telemetry_pb2.Telemetry.DESCRIPTOR)
+    add_columns("power",meshtastic.telemetry_pb2.PowerMetrics.DESCRIPTOR)
+
+
+def add_columns(name,descriptor):
+    fields = get_proto_fields(descriptor)
+    statements = create_column_statement(fields,name)
+    logs.logging.debug(statements)
+    run_sql(statements)
 
 def cleanup_old():
     logs.logging.info("Cleaning DB")
@@ -110,3 +91,16 @@ def cleanup_old():
         with conn.cursor() as cursor:
             cursor.execute("DELETE FROM telemetry WHERE timestamp < now() - interval '30 days'")
         conn.commit()
+
+def get_postgres_type(protobuf_type_number):
+    return dbvars.protobuf_to_postgres_map.get(protobuf_type_number, "TEXT")
+
+
+def get_proto_fields(descriptor):
+    fields = {}
+    for field in descriptor.fields:
+        field_name = field.name
+        field_type = field.type
+        pg_type = get_postgres_type(field_type)
+        fields[field_name] = pg_type
+    return fields
