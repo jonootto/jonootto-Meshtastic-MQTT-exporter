@@ -17,11 +17,11 @@ email_sender = os.environ["ESENDER"]
 
 
 # MQTT Configurations
-MQTT_BROKER = "mqtt.meshtastic.org"
+MQTT_BROKER = "10.1.100.244"
 MQTT_PORT = 1883
-MQTT_USERNAME = "meshdev"
+MQTT_USERNAME = "uplink"
 # trunk-ignore(bandit/B105)
-MQTT_PASSWORD = "large4cats"
+MQTT_PASSWORD = "uplink"
 root_topic = "msh/WLG_915/2/e/#"
 timef = ("%H:%M:%S %d-%m-%Y")
 

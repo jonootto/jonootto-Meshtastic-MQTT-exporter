@@ -55,7 +55,7 @@ def check_offline():
                 batterylevel = thisnode['battery_level']
                 logs.logging.info('Watched node %s %s last seen %s hours ago. Limit %s', id, shortname, total_hours, max_hours)
             except Exception as e:
-                #logs.logging.error("An error occurred: %s", e)
+                #logs.logging.error("An error occurred in check_offline... might not have node in db yet: %s", e)
                 email = None
                 max_hours = 6
                 #logs.logging.info('Node %s is not watched', shortname)

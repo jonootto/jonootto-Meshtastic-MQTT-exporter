@@ -41,11 +41,11 @@ def decode_encrypted(message_packet):
         if message_packet.decoded.portnum == portnums_pb2.NODEINFO_APP:
             info = mesh_pb2.User()
             info.ParseFromString(message_packet.decoded.payload)
-            #logs.logging.debug("NODEINFO_APP: %s", info)
+            logs.logging.debug("NODEINFO_APP: %s", info)
         elif message_packet.decoded.portnum == portnums_pb2.POSITION_APP:
             pos = mesh_pb2.Position()
             pos.ParseFromString(message_packet.decoded.payload)
-            #logs.logging.debug("POSITION_APP: %s", pos)
+            logs.logging.debug("POSITION_APP: %s", pos)
         elif message_packet.decoded.portnum == portnums_pb2.TELEMETRY_APP:
             logs.logging.debug("TELEM")
             tel = telemetry_pb2.Telemetry()
@@ -110,7 +110,7 @@ def create_statement_telem(data,sender,table,timestamp):
             statement = None
             #logs.logging.info(f"Field name: {field.name}, Field value: {rValue}")
     except Exception as e:
-        logs.logging.info(e)
+        logs.logging.error(e)
         statement = None
     return statement
 
@@ -159,7 +159,7 @@ def node_db(message_packet, info, pos, tel):
 
                 for sql in statement.values():
                     if sql:
-                        logs.logging.info(sql)
+                        #logs.logging.debug(sql)
                         cursor.execute(sql)
 
             conn.commit()
