@@ -72,7 +72,7 @@ def setup_tables():
     create_statements["telemetry"] =  """CREATE TABLE IF NOT EXISTS telemetry (id SERIAL PRIMARY KEY, node BIGINT REFERENCES nodes(id), timestamp TIMESTAMPTZ NOT NULL);"""
     create_statements["power"] = """CREATE TABLE IF NOT EXISTS power (id SERIAL PRIMARY KEY, node BIGINT REFERENCES nodes(id), timestamp TIMESTAMPTZ NOT NULL);"""
     create_statements["nodeinfo"]  = """CREATE TABLE IF NOT EXISTS nodeinfo (id SERIAL PRIMARY KEY, node BIGINT REFERENCES nodes(id), dest BIGINT, timestamp TIMESTAMPTZ NOT NULL);"""
-    
+
     run_sql(create_statements)
     node_statements = create_column_statement(dbvars.node_columns,"nodes")
     run_sql(node_statements)
@@ -91,7 +91,12 @@ def cleanup_old():
     logs.logging.info("Cleaning DB")
     with psycopg.connect(db_connection_string) as conn:
         with conn.cursor() as cursor:
-            cursor.execute("DELETE FROM telemetry WHERE timestamp < now() - interval '30 days'")
+            cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE';")
+            tables = cursor.fetchall()
+            tables.remove(('nodes',))
+            for table in tables:
+                query = f"DELETE FROM {table[0]} WHERE timestamp < now() - interval '30 days'"
+                cursor.execute(query)
         conn.commit()
 
 def get_postgres_type(protobuf_type_number):
