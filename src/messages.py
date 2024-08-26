@@ -8,6 +8,7 @@ from collections import deque
 import db
 import datetime
 import monitor
+import math
 
 message_types = portnums_pb2.PortNum.items()
 message_ids = deque([], 500)
@@ -99,6 +100,8 @@ def create_statement_telem(data,sender,table,timestamp):
             statement2 = ""
             for field, value in fields:
                 rValue = round(value,3)
+                if math.isnan(rValue):
+                    rValue= None
                 statement += f'{field.name}, '
                 statement2 += f'{rValue}, '
             statement += 'node, timestamp'
