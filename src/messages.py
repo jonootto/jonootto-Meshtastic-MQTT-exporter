@@ -121,9 +121,8 @@ def node_db(message_packet, info, pos, tel):
     nid = create_node_id(int(sender))
     with db.psycopg.connect(db.db_connection_string) as conn:
         with conn.cursor() as cursor:
-            lastHeard = message_packet.rx_time
-            timestamp = datetime.datetime.fromtimestamp(lastHeard, datetime.UTC)
-            timestamp = timestamp.replace(microsecond=(timestamp.microsecond // 10000) * 10000)
+            #lastHeard = message_packet.rx_time
+            timestamp = datetime.datetime.now()
             hopcount = message_packet.hop_start
             cursor.execute("SELECT id FROM nodes WHERE id=%s", (sender,))
             if not cursor.fetchall():
