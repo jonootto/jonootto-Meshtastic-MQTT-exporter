@@ -1,4 +1,5 @@
 import logging
+# trunk-ignore(ruff/F401)
 from colorama import Fore, Style
 from config import testmode
 
