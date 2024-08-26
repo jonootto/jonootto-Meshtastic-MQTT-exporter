@@ -101,7 +101,7 @@ def cleanup_old():
                 # trunk-ignore(bandit/B608)
                 query = f"DELETE FROM {table[0]} WHERE timestamp < now() - interval '30 days'"
                 cursor.execute(query)
-            query = "DELETE FROM mqtt WHERE timestamp < now() - interval '2 hours'"
+            query = "DELETE FROM mqtt WHERE timestamp < now() - interval '3 days'"
             cursor.execute(query)
         conn.commit()
 
