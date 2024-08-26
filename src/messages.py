@@ -69,18 +69,19 @@ def decode_encrypted(message_packet):
     finally:
         node_db(message_packet, info if 'info' in locals() else None, pos if 'pos' in locals() else None, tel if 'tel' in locals() else None)
 
-def record_mqtt(message_id,mqtt_node):
+def record_mqtt(message_id,mqtt_node,sender):
     with db.psycopg.connect(db.db_connection_string) as conn:
         with conn.cursor() as cursor:
             node_num = create_node_number(mqtt_node)
             timestamp = logs.timenow()
-            cursor.execute("INSERT INTO mqtt (node, msgid, timestamp) VALUES (%s, %s, %s)", (node_num, message_id, timestamp))
+            cursor.execute("INSERT INTO mqtt (node, msgid, sender, timestamp) VALUES (%s, %s, %s, %s)", (node_num, message_id, sender, timestamp))
         conn.commit()
 
 
 def message_seen(message_packet,mqtt_node):
     message_id = message_packet.id
-    record_mqtt(message_id,mqtt_node)
+    sender = str(getattr(message_packet, "from"))
+    record_mqtt(message_id,mqtt_node,sender)
     if message_id in message_ids:
         return True
     message_ids.append(message_id)
