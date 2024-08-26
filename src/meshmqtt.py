@@ -28,6 +28,8 @@ def on_connect(client, userdata, flags, reason_code, properties):
 
 
 def on_message(client, userdata, message):
+    mqtt_node = message.topic.rpartition('/')[-1]
+    logs.logging.info(mqtt_node)
     service_envelope = mqtt_pb2.ServiceEnvelope()
     try:
         service_envelope.ParseFromString(message.payload)
@@ -36,7 +38,7 @@ def on_message(client, userdata, message):
         logs.logging.warning("Error parsing message: %s", str(e))
         return
     if message_packet.HasField("encrypted") and not message_packet.HasField("decoded"):
-        if not messages.message_seen(message_packet):
+        if not messages.message_seen(message_packet,mqtt_node):
             rawmsg = str(message_packet).splitlines()
             rawmsg.pop(3)
             logs.logging.debug(logs.Fore.CYAN + str(rawmsg) + logs.Style.RESET_ALL)
