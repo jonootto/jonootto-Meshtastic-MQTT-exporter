@@ -11,7 +11,7 @@ import datetime
 import monitor
 
 message_types = portnums_pb2.PortNum.items()
-message_ids = deque([], 200)
+message_ids = deque([], 500)
 
 
 def create_node_id(node_number):
