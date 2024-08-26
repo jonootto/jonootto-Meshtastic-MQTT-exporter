@@ -44,4 +44,5 @@ def on_message(client, userdata, message):
         else:
             logs.logging.debug(logs.Fore.LIGHTBLUE_EX + "Skipping already seen message" + logs.Style.RESET_ALL)
     else:
-        logs.logging.debug(logs.Fore.RED + str(message_packet) + logs.Style.RESET_ALL)
+        #logs.logging.debug(logs.Fore.RED + str(message_packet) + logs.Style.RESET_ALL)
+        pass

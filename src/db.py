@@ -71,6 +71,7 @@ def setup_tables():
     create_statements["environment"] = """CREATE TABLE IF NOT EXISTS environment (id SERIAL PRIMARY KEY,node BIGINT REFERENCES nodes(id),timestamp TIMESTAMPTZ NOT NULL);"""
     create_statements["telemetry"] =  """CREATE TABLE IF NOT EXISTS telemetry (id SERIAL PRIMARY KEY, node BIGINT REFERENCES nodes(id), timestamp TIMESTAMPTZ NOT NULL);"""
     create_statements["power"] = """CREATE TABLE IF NOT EXISTS power (id SERIAL PRIMARY KEY, node BIGINT REFERENCES nodes(id), timestamp TIMESTAMPTZ NOT NULL);"""
+    create_statements["nodeinfo"]  = """CREATE TABLE IF NOT EXISTS nodeinfo (id SERIAL PRIMARY KEY, node BIGINT REFERENCES nodes(id), timestamp TIMESTAMPTZ NOT NULL);"""
     run_sql(create_statements)
     node_statements = create_column_statement(dbvars.node_columns,"nodes")
     run_sql(node_statements)

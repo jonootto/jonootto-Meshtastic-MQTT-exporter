@@ -1,7 +1,6 @@
 import base64
 import logs
 import config
-import json
 from meshtastic import mesh_pb2, portnums_pb2, telemetry_pb2
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
@@ -19,7 +18,7 @@ def create_node_id(node_number):
 
 
 def get_nonce(message_packet):
-    nonce_packet_id = getattr(message_packet, "id").to_bytes(8, "little")
+    nonce_packet_id = message_packet.id.to_bytes(8, "little")
     nonce_from_node = getattr(message_packet, "from").to_bytes(8, "little")
     nonce = nonce_packet_id + nonce_from_node
     return nonce
@@ -37,7 +36,6 @@ def decode_encrypted(message_packet):
         data.ParseFromString(decrypted_bytes)
         message_packet.decoded.CopyFrom(data)
 
-
         if message_packet.decoded.portnum == portnums_pb2.NODEINFO_APP:
             info = mesh_pb2.User()
             info.ParseFromString(message_packet.decoded.payload)
@@ -45,15 +43,15 @@ def decode_encrypted(message_packet):
         elif message_packet.decoded.portnum == portnums_pb2.POSITION_APP:
             pos = mesh_pb2.Position()
             pos.ParseFromString(message_packet.decoded.payload)
-            logs.logging.debug("POSITION_APP: %s", pos)
+            #logs.logging.debug("POSITION_APP: %s", pos)
         elif message_packet.decoded.portnum == portnums_pb2.TELEMETRY_APP:
             logs.logging.debug("TELEM")
             tel = telemetry_pb2.Telemetry()
             tel.ParseFromString(message_packet.decoded.payload)
-            logs.logging.debug("TELEMETRY_APP: %s", tel)
+            #logs.logging.debug("TELEMETRY_APP: %s", tel)
         elif message_packet.decoded.portnum == portnums_pb2.TEXT_MESSAGE_APP:
             text_payload = message_packet.decoded.payload.decode("utf-8")
-            logs.logging.info("TEXT_MESSAGE_APP: %s", text_payload)
+            #logs.logging.info("TEXT_MESSAGE_APP: %s", text_payload)
         else:
             loc = next((i for i, v in enumerate(message_types) if v[1] == message_packet.decoded.portnum), None)
             if loc is not None:
@@ -93,7 +91,6 @@ def create_statement_node(data,sender,timestamp):
     return statement
 
 def create_statement_telem(data,sender,table,timestamp):
-    #cursor.execute('INSERT INTO telemetry (node, timestamp, battery_level, voltage, channel_utilization, air_util_tx) VALUES (%s, %s, %s, %s, %s, %s)',(sender, timestamp, telem["battery_level"], telem["voltage"], telem["channel_utilization"], telem["air_util_tx"]))
     try:
         fields = data.ListFields()
         if fields:
@@ -115,24 +112,21 @@ def create_statement_telem(data,sender,table,timestamp):
     return statement
 
 
-
-
 def node_db(message_packet, info, pos, tel):
     sender = str(getattr(message_packet, "from"))
     nid = create_node_id(int(sender))
     with db.psycopg.connect(db.db_connection_string) as conn:
         with conn.cursor() as cursor:
+            lastHeard = message_packet.rx_time
+            timestamp = datetime.datetime.fromtimestamp(lastHeard, datetime.UTC)
+            hopcount = message_packet.hop_start
             cursor.execute("SELECT id FROM nodes WHERE id=%s", (sender,))
             if not cursor.fetchall():
                 cursor.execute("INSERT INTO nodes (id, hexid) VALUES (%s, %s)", (sender, nid))
                 logs.logging.info("New node added to DB")
-
-            lastHeard = message_packet.rx_time
-            hopcount = message_packet.hop_start
-            timestamp = datetime.datetime.fromtimestamp(lastHeard, datetime.UTC)
+            cursor.execute("INSERT INTO nodeinfo (node, timestamp) VALUES (%s, %s)",(sender, timestamp))
             monitor.check_offline_monitored_node(sender)
             cursor.execute('UPDATE nodes SET online=True, hopcount=%s, LastHeard=%s WHERE id=%s', (hopcount, timestamp, sender))
-
             if info:
                 cursor.execute('UPDATE nodes SET long_name=%s, short_name=%s, hardware=%s, role=%s WHERE id=%s',
                                (info.long_name, info.short_name, info.hw_model, info.role, sender))
@@ -159,7 +153,6 @@ def node_db(message_packet, info, pos, tel):
 
                 for sql in statement.values():
                     if sql:
-                        #logs.logging.debug(sql)
                         try:
                             cursor.execute(sql)
                         except Exception as e:
