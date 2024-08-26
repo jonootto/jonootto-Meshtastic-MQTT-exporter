@@ -95,6 +95,7 @@ def cleanup_old():
             tables = cursor.fetchall()
             tables.remove(('nodes',))
             for table in tables:
+                # trunk-ignore(bandit/B608)
                 query = f"DELETE FROM {table[0]} WHERE timestamp < now() - interval '30 days'"
                 cursor.execute(query)
         conn.commit()
