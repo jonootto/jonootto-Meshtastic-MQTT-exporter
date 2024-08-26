@@ -72,6 +72,8 @@ def setup_tables():
     create_statements["telemetry"] =  """CREATE TABLE IF NOT EXISTS telemetry (id SERIAL PRIMARY KEY, node BIGINT REFERENCES nodes(id), timestamp TIMESTAMPTZ NOT NULL);"""
     create_statements["power"] = """CREATE TABLE IF NOT EXISTS power (id SERIAL PRIMARY KEY, node BIGINT REFERENCES nodes(id), timestamp TIMESTAMPTZ NOT NULL);"""
     create_statements["nodeinfo"]  = """CREATE TABLE IF NOT EXISTS nodeinfo (id SERIAL PRIMARY KEY, node BIGINT REFERENCES nodes(id), dest BIGINT, timestamp TIMESTAMPTZ NOT NULL);"""
+    create_statements["mqtt"]  = """CREATE TABLE IF NOT EXISTS mqtt (id SERIAL PRIMARY KEY, node BIGINT REFERENCES nodes(id), msgid BIGINT, timestamp TIMESTAMPTZ NOT NULL);"""
+
 
     run_sql(create_statements)
     node_statements = create_column_statement(dbvars.node_columns,"nodes")
@@ -94,10 +96,13 @@ def cleanup_old():
             cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE';")
             tables = cursor.fetchall()
             tables.remove(('nodes',))
+            tables.remove(('mqtt',))
             for table in tables:
                 # trunk-ignore(bandit/B608)
                 query = f"DELETE FROM {table[0]} WHERE timestamp < now() - interval '30 days'"
                 cursor.execute(query)
+            query = "DELETE FROM mqtt WHERE timestamp < now() - interval '2 hours'"
+            cursor.execute(query)
         conn.commit()
 
 def get_postgres_type(protobuf_type_number):

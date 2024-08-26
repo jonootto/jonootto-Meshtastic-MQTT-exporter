@@ -6,17 +6,19 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 from collections import deque
 import db
-import datetime
 import monitor
 import math
 
 message_types = portnums_pb2.PortNum.items()
 message_ids = deque([], 500)
+mqtt_messages = {}
 
 
 def create_node_id(node_number):
     return f"!{hex(node_number)[2:]}"
 
+def create_node_number(hex_id):
+    return int(hex_id.lstrip('!'),16)
 
 def get_nonce(message_packet):
     nonce_packet_id = message_packet.id.to_bytes(8, "little")
@@ -67,9 +69,18 @@ def decode_encrypted(message_packet):
     finally:
         node_db(message_packet, info if 'info' in locals() else None, pos if 'pos' in locals() else None, tel if 'tel' in locals() else None)
 
+def record_mqtt(message_id,mqtt_node):
+    with db.psycopg.connect(db.db_connection_string) as conn:
+        with conn.cursor() as cursor:
+            node_num = create_node_number(mqtt_node)
+            timestamp = logs.timenow()
+            cursor.execute("INSERT INTO mqtt (node, msgid, timestamp) VALUES (%s, %s, %s)", (node_num, message_id, timestamp))
+        conn.commit()
 
-def message_seen(message_packet):
+
+def message_seen(message_packet,mqtt_node):
     message_id = message_packet.id
+    record_mqtt(message_id,mqtt_node)
     if message_id in message_ids:
         return True
     message_ids.append(message_id)
@@ -122,8 +133,7 @@ def node_db(message_packet, info, pos, tel):
     with db.psycopg.connect(db.db_connection_string) as conn:
         with conn.cursor() as cursor:
             #lastHeard = message_packet.rx_time
-            timestamp = datetime.datetime.now()
-            timestamp = timestamp.replace(microsecond=(timestamp.microsecond // 10000) * 10000)
+            timestamp = logs.timenow()
             hopcount = message_packet.hop_start
             cursor.execute("SELECT id FROM nodes WHERE id=%s", (sender,))
             if not cursor.fetchall():
