@@ -38,8 +38,9 @@ def decode_encrypted(message_packet):
 
         if message_packet.decoded.portnum == portnums_pb2.NODEINFO_APP:
             info = mesh_pb2.User()
+            infodst = message_packet.to
             info.ParseFromString(message_packet.decoded.payload)
-            logs.logging.debug("NODEINFO_APP: %s", info)
+            logs.logging.debug("NODEINFO_APP: %s DST: %s", info, infodst)
         elif message_packet.decoded.portnum == portnums_pb2.POSITION_APP:
             pos = mesh_pb2.Position()
             pos.ParseFromString(message_packet.decoded.payload)
@@ -124,7 +125,8 @@ def node_db(message_packet, info, pos, tel):
             if not cursor.fetchall():
                 cursor.execute("INSERT INTO nodes (id, hexid) VALUES (%s, %s)", (sender, nid))
                 logs.logging.info("New node added to DB")
-            cursor.execute("INSERT INTO nodeinfo (node, timestamp) VALUES (%s, %s)",(sender, timestamp))
+            infodst = message_packet.to
+            cursor.execute("INSERT INTO nodeinfo (node, dest, timestamp) VALUES (%s, %s, %s)",(sender,infodst, timestamp))
             monitor.check_offline_monitored_node(sender)
             cursor.execute('UPDATE nodes SET online=True, hopcount=%s, LastHeard=%s WHERE id=%s', (hopcount, timestamp, sender))
             if info:
