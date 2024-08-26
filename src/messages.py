@@ -101,7 +101,7 @@ def create_statement_telem(data,sender,table,timestamp):
             for field, value in fields:
                 rValue = round(value,3)
                 if math.isnan(rValue):
-                    rValue= None
+                    rValue= "NULL"
                 statement += f'{field.name}, '
                 statement2 += f'{rValue}, '
             statement += 'node, timestamp'
