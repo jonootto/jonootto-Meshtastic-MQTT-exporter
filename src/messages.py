@@ -123,6 +123,7 @@ def node_db(message_packet, info, pos, tel):
         with conn.cursor() as cursor:
             #lastHeard = message_packet.rx_time
             timestamp = datetime.datetime.now()
+            timestamp = timestamp.replace(microsecond=(timestamp.microsecond // 10000) * 10000)
             hopcount = message_packet.hop_start
             cursor.execute("SELECT id FROM nodes WHERE id=%s", (sender,))
             if not cursor.fetchall():
