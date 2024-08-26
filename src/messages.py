@@ -160,6 +160,10 @@ def node_db(message_packet, info, pos, tel):
                 for sql in statement.values():
                     if sql:
                         #logs.logging.debug(sql)
-                        cursor.execute(sql)
+                        try:
+                            cursor.execute(sql)
+                        except Exception as e:
+                            logs.logging.info(sql)
+                            logs.logging.error(e)
 
             conn.commit()
