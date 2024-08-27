@@ -29,7 +29,7 @@ def on_connect(client, userdata, flags, reason_code, properties):
 
 def on_message(client, userdata, message):
     mqtt_node = message.topic.rpartition('/')[-1]
-    logs.logging.info(mqtt_node)
+    #logs.logging.debug(mqtt_node)
     service_envelope = mqtt_pb2.ServiceEnvelope()
     try:
         service_envelope.ParseFromString(message.payload)
