@@ -44,7 +44,8 @@ def on_message(client, userdata, message):
             logs.logging.debug(logs.Fore.CYAN + str(rawmsg) + logs.Style.RESET_ALL)
             messages.decode_encrypted(message_packet)
         else:
-            logs.logging.debug(logs.Fore.LIGHTBLUE_EX + "Skipping already seen message" + logs.Style.RESET_ALL)
+            #logs.logging.debug(logs.Fore.LIGHTBLUE_EX + "Skipping already seen message" + logs.Style.RESET_ALL)
+            pass
     else:
         #logs.logging.debug(logs.Fore.RED + str(message_packet) + logs.Style.RESET_ALL)
         pass
