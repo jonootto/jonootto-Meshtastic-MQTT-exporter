@@ -8,6 +8,8 @@ from collections import deque
 import db
 import monitor
 import math
+import re
+
 
 message_types = portnums_pb2.PortNum.items()
 message_ids = deque([], 500)
@@ -56,6 +58,14 @@ def decode_encrypted(message_packet):
         elif message_packet.decoded.portnum == portnums_pb2.TEXT_MESSAGE_APP:
             text_payload = message_packet.decoded.payload.decode("utf-8")
             #logs.logging.info("TEXT_MESSAGE_APP: %s", text_payload)
+        elif message_packet.decoded.portnum == portnums_pb2.NEIGHBORINFO_APP:
+            neighbours = mesh_pb2.NeighborInfo()
+            neighbours.ParseFromString(message_packet.decoded.payload)
+            logs.logging.debug("NEIGHBORINFO_APP: %s", neighbours)
+        elif message_packet.decoded.portnum == portnums_pb2.ROUTING_APP:
+            routing = mesh_pb2.Routing()
+            routing.ParseFromString(message_packet.decoded.payload)
+            logs.logging.info("ROUTING_APP: %s", routing)
         else:
             loc = next((i for i, v in enumerate(message_types) if v[1] == message_packet.decoded.portnum), None)
             if loc is not None:
@@ -67,7 +77,7 @@ def decode_encrypted(message_packet):
     except Exception as e:
         logs.logging.warning("Decryption failed: %s", str(e))
     finally:
-        node_db(message_packet, info if 'info' in locals() else None, pos if 'pos' in locals() else None, tel if 'tel' in locals() else None)
+        node_db(message_packet, info if 'info' in locals() else None, pos if 'pos' in locals() else None, tel if 'tel' in locals() else None, neighbours if 'neighbours' in locals() else None)
 
 def record_mqtt(message_id,mqtt_node,sender):
     with db.psycopg.connect(db.db_connection_string) as conn:
@@ -127,8 +137,31 @@ def create_statement_telem(data,sender,table,timestamp):
         statement = None
     return statement
 
+def parse_neighbours(message):
+    # Regex patterns to extract data
+    node_id_pattern = r"node_id: (\d+)"
+    last_sent_by_id_pattern = r"last_sent_by_id: (\d+)"
+    broadcast_interval_pattern = r"node_broadcast_interval_secs: (\d+)"
+    neighbor_pattern = r"neighbors {\s+node_id: (\d+)\s+snr: ([\d\.\-]+)\s+}"
 
-def node_db(message_packet, info, pos, tel):
+    # Extracting the data
+    node_id = re.search(node_id_pattern, message.group(1))
+    last_sent_by_id = re.search(last_sent_by_id_pattern, message.group(1))
+    broadcast_interval = re.search(broadcast_interval_pattern, message.group(1))
+    neighbors = re.findall(neighbor_pattern, message)
+
+    # Convert to desired data structures
+    parsed_data = {
+        "node_id": int(node_id),
+        "last_sent_by_id": int(last_sent_by_id),
+        "node_broadcast_interval_secs": int(broadcast_interval),
+        "neighbors": [{"node_id": int(n_id), "snr": float(snr)} for n_id, snr in neighbors]
+    }
+
+    print(parsed_data)
+
+
+def node_db(message_packet, info, pos, tel,neighbors):
     sender = str(getattr(message_packet, "from"))
     nid = create_node_id(int(sender))
     with db.psycopg.connect(db.db_connection_string) as conn:
@@ -175,5 +208,11 @@ def node_db(message_packet, info, pos, tel):
                         except Exception as e:
                             logs.logging.info(sql)
                             logs.logging.error(e)
-
+            elif neighbors:
+                node = neighbors.node_id
+                for neighbor in neighbors.neighbors:
+                    logs.logging.debug(f"Node ID: {neighbor.node_id}, SNR: {neighbor.snr}")
+                    rnode = neighbor.node_id
+                    snr = neighbor.snr
+                    cursor.execute('''INSERT INTO neighbours (node, remotenode, SNR, timestamp) VALUES (%s, %s, %s, %s) ON CONFLICT (node, remotenode) DO UPDATE SET SNR = EXCLUDED.SNR, timestamp = EXCLUDED.timestamp;''', (node, rnode, snr, timestamp))
             conn.commit()

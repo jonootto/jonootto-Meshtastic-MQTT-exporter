@@ -73,6 +73,7 @@ def setup_tables():
     create_statements["power"] = """CREATE TABLE IF NOT EXISTS power (id SERIAL PRIMARY KEY, node BIGINT REFERENCES nodes(id), timestamp TIMESTAMPTZ NOT NULL);"""
     create_statements["nodeinfo"]  = """CREATE TABLE IF NOT EXISTS nodeinfo (id SERIAL PRIMARY KEY, node BIGINT REFERENCES nodes(id), dest BIGINT, timestamp TIMESTAMPTZ NOT NULL);"""
     create_statements["mqtt"]  = """CREATE TABLE IF NOT EXISTS mqtt (id SERIAL PRIMARY KEY, node BIGINT, msgid BIGINT, sender BIGINT, timestamp TIMESTAMPTZ NOT NULL);"""
+    create_statements["neighbours"]  = """CREATE TABLE IF NOT EXISTS neighbours (id SERIAL PRIMARY KEY, node BIGINT, remotenode BIGINT, SNR FLOAT, timestamp TIMESTAMPTZ NOT NULL, UNIQUE (node, remotenode));"""
 
 
     run_sql(create_statements)
