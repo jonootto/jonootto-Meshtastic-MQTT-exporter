@@ -104,6 +104,8 @@ def cleanup_old():
                 cursor.execute(query)
             query = "DELETE FROM mqtt WHERE timestamp < now() - interval '3 days'"
             cursor.execute(query)
+            query = "DELETE FROM neighbours WHERE timestamp < now() - interval '12 hours'"
+            cursor.execute(query)
         conn.commit()
 
 def get_postgres_type(protobuf_type_number):
