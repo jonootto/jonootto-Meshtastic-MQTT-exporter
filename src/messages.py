@@ -40,33 +40,35 @@ def decode_encrypted(message_packet):
         data = mesh_pb2.Data()
         data.ParseFromString(decrypted_bytes)
         message_packet.decoded.CopyFrom(data)
+        routing = neighbours = text_payload = tel = pos = info = None
 
         if message_packet.decoded.portnum == portnums_pb2.NODEINFO_APP:
             info = mesh_pb2.User()
             infodst = message_packet.to
             info.ParseFromString(message_packet.decoded.payload)
             logs.logging.debug("NODEINFO_APP: %s DST: %s", info, infodst)
-        elif message_packet.decoded.portnum == portnums_pb2.POSITION_APP:
+        if message_packet.decoded.portnum == portnums_pb2.POSITION_APP:
             pos = mesh_pb2.Position()
             pos.ParseFromString(message_packet.decoded.payload)
             #logs.logging.debug("POSITION_APP: %s", pos)
-        elif message_packet.decoded.portnum == portnums_pb2.TELEMETRY_APP:
+        if message_packet.decoded.portnum == portnums_pb2.TELEMETRY_APP:
             logs.logging.debug("TELEM")
             tel = telemetry_pb2.Telemetry()
             tel.ParseFromString(message_packet.decoded.payload)
             #logs.logging.debug("TELEMETRY_APP: %s", tel)
-        elif message_packet.decoded.portnum == portnums_pb2.TEXT_MESSAGE_APP:
+        if message_packet.decoded.portnum == portnums_pb2.TEXT_MESSAGE_APP:
             text_payload = message_packet.decoded.payload.decode("utf-8")
-            #logs.logging.info("TEXT_MESSAGE_APP: %s", text_payload)
-        elif message_packet.decoded.portnum == portnums_pb2.NEIGHBORINFO_APP:
+            logs.logging.info("TEXT_MESSAGE_APP: %s", text_payload)
+        if message_packet.decoded.portnum == portnums_pb2.NEIGHBORINFO_APP:
             neighbours = mesh_pb2.NeighborInfo()
             neighbours.ParseFromString(message_packet.decoded.payload)
             logs.logging.debug("NEIGHBORINFO_APP: %s", neighbours)
-        elif message_packet.decoded.portnum == portnums_pb2.ROUTING_APP:
+        if message_packet.decoded.portnum == portnums_pb2.ROUTING_APP:
             routing = mesh_pb2.Routing()
             routing.ParseFromString(message_packet.decoded.payload)
             logs.logging.info("ROUTING_APP: %s", routing)
-        else:
+
+        if all(var is None for var in [routing, neighbours, text_payload, tel, pos, info]):
             loc = next((i for i, v in enumerate(message_types) if v[1] == message_packet.decoded.portnum), None)
             if loc is not None:
                 type = message_types[loc][0]
